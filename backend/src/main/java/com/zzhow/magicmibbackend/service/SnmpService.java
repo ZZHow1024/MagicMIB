@@ -29,6 +29,11 @@ import java.io.IOException;
 @Service
 public class SnmpService {
 
+    public enum SnmpOperation {
+        GET,
+        GET_NEXT
+    }
+
     private final Snmp snmp;
 
     @Autowired
@@ -45,7 +50,7 @@ public class SnmpService {
     }
 
     /**
-     * 执行 SNMP GET 请求
+     * 执行 SNMP Get 请求
      *
      * @param agentIp   Agent IP
      * @param oid       目标 OID
@@ -53,6 +58,31 @@ public class SnmpService {
      * @return 结果字符串
      */
     public String performSnmpGet(String agentIp, String oid, String community) {
+        return performSnmp(agentIp, oid, community, SnmpOperation.GET);
+    }
+
+    /**
+     * 执行 SNMP GetNext 请求
+     *
+     * @param agentIp   Agent IP
+     * @param oid       起始 OID
+     * @param community 共同体名
+     * @return 下一条 OID 及其值
+     */
+    public String performSnmpGetNext(String agentIp, String oid, String community) {
+        return performSnmp(agentIp, oid, community, SnmpOperation.GET_NEXT);
+    }
+
+    /**
+     * 执行通用 SNMP 请求
+     *
+     * @param agentIp   Agent IP
+     * @param oid       目标 OID
+     * @param community 共同体名
+     * @param operation SNMP 操作类型
+     * @return 结果字符串
+     */
+    public String performSnmp(String agentIp, String oid, String community, SnmpOperation operation) {
         // 创建目标地址 (默认端口 161)
         Address targetAddress = new UdpAddress(agentIp + "/161");
 
@@ -64,10 +94,14 @@ public class SnmpService {
         target.setTimeout(1500);
         target.setVersion(SnmpConstants.version1);
 
-        // 创建 PDU（GET 操作）
+        // 创建 PDU（根据操作类型设置）
         PDU pdu = new PDU();
         pdu.add(new VariableBinding(new OID(oid)));
-        pdu.setType(PDU.GET);
+        if (operation == SnmpOperation.GET) {
+            pdu.setType(PDU.GET);
+        } else {
+            pdu.setType(PDU.GETNEXT);
+        }
 
         try {
             // 发送请求
@@ -76,7 +110,10 @@ public class SnmpService {
             if (responseEvent != null && responseEvent.getResponse() != null) {
                 // 解析响应
                 VariableBinding vb = responseEvent.getResponse().get(0);
-                return vb.getVariable().toString();
+                if (operation == SnmpOperation.GET) {
+                    return vb.getVariable().toString();
+                }
+                return vb.getOid().toDottedString() + " = " + vb.getVariable().toString();
             } else {
                 log.error("No Response from target device");
                 return "No Response from target device.";

@@ -27,13 +27,24 @@ class SnmpServiceTest {
     private static final String SYS_DESCR_OID = "1.3.6.1.2.1.1.1.0"; // OID(System Description)
 
     @Test
-    @DisplayName("测试成功的SNMP GET请求")
+    @DisplayName("测试成功的SNMP Get请求")
     void testSnmpGet() {
         try {
             String result = snmpService.performSnmpGet(TEST_AGENT_IP, SYS_DESCR_OID, TEST_COMMUNITY);
-            System.out.println("成功获取 sysDescr: " + result);
+            System.out.println("成功获取 sysDescr：" + result);
         } catch (Exception e) {
-            fail("SNMP GET通信失败，异常信息: " + e.getMessage());
+            fail("SNMP Get通信失败，异常信息：" + e.getMessage());
+        }
+    }
+
+    @Test
+    @DisplayName("测试成功的SNMP GetNext请求")
+    void testSnmpGetNext() {
+        try {
+            String result = snmpService.performSnmpGetNext(TEST_AGENT_IP, SYS_DESCR_OID, TEST_COMMUNITY);
+            System.out.println("成功获取 sysDescr：" + result);
+        } catch (Exception e) {
+            fail("SNMP Get通信失败，异常信息：" + e.getMessage());
         }
     }
 }
