@@ -5,7 +5,7 @@ import lombok.Data;
 import lombok.NoArgsConstructor;
 
 /**
- * SNMP Get 请求信息传输模型
+ * SNMP Get/GetNext 请求信息传输模型
  *
  * @author ZZHow
  * create 2025/11/28

@@ -24,7 +24,7 @@ public class SnmpController {
     /**
      * 发起 SNMP Get 请求
      *
-     * @param snmpGetDTO SNMP Get 请求信息传输模型
+     * @param snmpGetDTO SNMP Get/GetNext 请求信息传输模型
      * @return Get 信息
      */
     @GetMapping("/get")
@@ -32,5 +32,18 @@ public class SnmpController {
         log.info("发起 SNMP Get 请求：snmpGetDTO = {}", snmpGetDTO);
 
         return snmpService.get(snmpGetDTO);
+    }
+
+    /**
+     * 发起 SNMP GetNext 请求
+     *
+     * @param snmpGetDTO SNMP Get/GetNext 请求信息传输模型
+     * @return GetNext 信息
+     */
+    @GetMapping("/get-next")
+    public Result<String> getNext(SnmpGetDTO snmpGetDTO) {
+        log.info("发起 SNMP GetNext 请求：snmpGetDTO = {}", snmpGetDTO);
+
+        return snmpService.getNext(snmpGetDTO);
     }
 }

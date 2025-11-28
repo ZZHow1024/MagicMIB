@@ -64,6 +64,17 @@ public class SnmpServiceImpl implements SnmpService {
     }
 
     /**
+     * 执行 SNMP GetNext 请求
+     *
+     * @param snmpGetDTO SNMP Get/GetNext 请求信息传输模型
+     * @return 结果字符串
+     */
+    @Override
+    public Result<String> getNext(SnmpGetDTO snmpGetDTO) {
+        return Result.success(this.performSnmpGetNext(AuthenticationRepository.address, snmpGetDTO.getOid(), AuthenticationRepository.readCommunity));
+    }
+
+    /**
      * 执行 SNMP Get 请求
      *
      * @param agentIp   Agent IP

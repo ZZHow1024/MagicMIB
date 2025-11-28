@@ -14,8 +14,16 @@ public interface SnmpService {
     /**
      * 执行 SNMP Get 请求
      *
-     * @param snmpGetDTO SNMP Get 请求信息传输模型
+     * @param snmpGetDTO SNMP Get/GetNext 请求信息传输模型
      * @return 结果字符串
      */
     Result<String> get(SnmpGetDTO snmpGetDTO);
+
+    /**
+     * 执行 SNMP GetNext 请求
+     *
+     * @param snmpGetDTO SNMP Get/GetNext 请求信息传输模型
+     * @return 结果字符串
+     */
+    Result<String> getNext(SnmpGetDTO snmpGetDTO);
 }
