@@ -14,7 +14,10 @@
     "format": "prettier --write --experimental-cli src/"
   },
   "dependencies": {
+    "@arco-design/web-vue": "^2.57.0",
+    "axios": "^1.13.2",
     "pinia": "^3.0.4",
+    "scss": "^0.2.4",
     "vue": "^3.5.25",
     "vue-router": "^4.6.3"
   },
@@ -26,6 +29,7 @@
     "eslint-plugin-vue": "~10.5.1",
     "globals": "^16.5.0",
     "prettier": "3.6.2",
+    "sass-embedded": "^1.93.3",
     "vite": "^7.2.4",
     "vite-plugin-vue-devtools": "^8.0.5"
   }

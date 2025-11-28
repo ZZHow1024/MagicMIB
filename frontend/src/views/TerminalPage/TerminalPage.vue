@@ -1,7 +1,7 @@
 <script setup></script>
 
 <template>
-  <RouterView />
+  <div id="terminal-page">终端页</div>
 </template>
 
 <style scoped lang="scss"></style>
