@@ -15,9 +15,14 @@ import lombok.NoArgsConstructor;
 @AllArgsConstructor
 @NoArgsConstructor
 public class AuthenticationDTO {
+    // IP 地址
     private String address = "127.0.0.1";
+    // 端口号
     private Integer port = 161;
+    // 只读共同体名
     private String readCommunity = "public";
+    // 读写共同体名
     private String writeCommunity = "public";
+    // SNMP 版本
     private Integer snmpVersion = 1;
 }

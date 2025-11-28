@@ -20,7 +20,7 @@ public class Result<T> {
     private T data; // 数据
 
     public static <T> Result<T> success() {
-        return new Result<>(0, "成功", null);
+        return new Result<>(0, "success", null);
     }
 
     public static <T> Result<T> success(String message, T object) {
@@ -28,7 +28,7 @@ public class Result<T> {
     }
 
     public static <T> Result<T> success(T object) {
-        return new Result<>(0, "成功", object);
+        return new Result<>(0, "success", object);
     }
 
     public static <T> Result<T> error(String message) {

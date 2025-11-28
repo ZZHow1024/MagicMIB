@@ -1,7 +1,7 @@
 package com.zzhow.magicmibbackend;
 
 import com.zzhow.magicmibbackend.config.SnmpConfiguration;
-import com.zzhow.magicmibbackend.service.SnmpService;
+import com.zzhow.magicmibbackend.service.impl.SnmpServiceImpl;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -20,7 +20,7 @@ import static org.junit.jupiter.api.Assertions.*;
 class SnmpServiceTest {
 
     @Autowired
-    private SnmpService snmpService;
+    private SnmpServiceImpl snmpServiceImpl;
 
     private static final String TEST_AGENT_IP = "127.0.0.1"; // Agent IP
     private static final String TEST_COMMUNITY = "network"; // Community
@@ -30,7 +30,7 @@ class SnmpServiceTest {
     @DisplayName("测试成功的SNMP Get请求")
     void testSnmpGet() {
         try {
-            String result = snmpService.performSnmpGet(TEST_AGENT_IP, SYS_DESCR_OID, TEST_COMMUNITY);
+            String result = snmpServiceImpl.performSnmpGet(TEST_AGENT_IP, SYS_DESCR_OID, TEST_COMMUNITY);
             System.out.println("成功获取 sysDescr：" + result);
         } catch (Exception e) {
             fail("SNMP Get通信失败，异常信息：" + e.getMessage());
@@ -41,7 +41,7 @@ class SnmpServiceTest {
     @DisplayName("测试成功的SNMP GetNext请求")
     void testSnmpGetNext() {
         try {
-            String result = snmpService.performSnmpGetNext(TEST_AGENT_IP, SYS_DESCR_OID, TEST_COMMUNITY);
+            String result = snmpServiceImpl.performSnmpGetNext(TEST_AGENT_IP, SYS_DESCR_OID, TEST_COMMUNITY);
             System.out.println("成功获取 sysDescr：" + result);
         } catch (Exception e) {
             fail("SNMP Get通信失败，异常信息：" + e.getMessage());
