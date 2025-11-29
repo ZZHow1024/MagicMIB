@@ -1,10 +1,21 @@
 <script setup>
 import { computed, ref } from 'vue'
+import { setAuthenticationService } from '@/api/authentication.js'
+import { Message } from '@arco-design/web-vue'
 
-const address = ref('127.0.0.1')
 const oidInput = ref('1.3.6.1.2.1.1.1.0')
 const operations = ['Get', 'GetNext', 'Walk']
 const selectedOperation = ref(operations[0])
+
+const isAdvancedModalOpen = ref(false)
+
+const advancedForm = ref({
+  address: '127.0.0.1',
+  port: '161',
+  readCommunity: 'public',
+  writeCommunity: 'public',
+  snmpVersion: 1,
+})
 
 const mibTree = ref([
   {
@@ -276,22 +287,45 @@ const selectNode = (node) => {
 const handleGo = () => {
   console.log('Trigger operation:', selectedOperation.value, oidInput.value)
 }
+
+const setAuthenticationLoading = ref(false)
+const openAdvancedModal = () => {
+  isAdvancedModalOpen.value = true
+}
+
+const confirmAdvancedModal = async () => {
+  setAuthenticationLoading.value = true
+  try {
+    const res = await setAuthenticationService()
+    if (res.data.code === 0) Message.success('配置成功')
+    else Message.warning(res.data.message)
+  } catch (e) {
+    Message.error('系统错误')
+  }
+  setAuthenticationLoading.value = false
+  isAdvancedModalOpen.value = false
+}
+const closeAdvancedModal = () => {
+  isAdvancedModalOpen.value = false
+}
 </script>
 
 <template>
   <div class="mib-page">
     <section class="control-bar">
       <div class="field address-field">
-        <label for="mib-address">Address</label>
-        <input id="mib-address" v-model="address" type="text" />
+        <label for="mib-address">IP地址</label>
+        <input id="mib-address" v-model="advancedForm.address" type="text" />
       </div>
-      <button class="advanced-button" type="button">Advanced...</button>
+      <a-button class="advanced-button" type="outline" size="small" @click="openAdvancedModal">
+        高级...
+      </a-button>
       <div class="field oid-field">
         <label for="mib-oid">OID</label>
         <input id="mib-oid" v-model="oidInput" type="text" />
       </div>
       <div class="field operation-field">
-        <label for="mib-operation">Operation</label>
+        <label for="mib-operation">操作</label>
         <select id="mib-operation" v-model="selectedOperation">
           <option v-for="operation in operations" :key="operation" :value="operation">
             {{ operation }}
@@ -377,6 +411,59 @@ const handleGo = () => {
         <div v-else class="no-result">暂无数据，点击 GO 按钮后将展示返回结果</div>
       </div>
     </section>
+
+    <a-modal
+      v-model:visible="isAdvancedModalOpen"
+      title="SNMP 代理的高级属性"
+      modal-class="advanced-modal"
+      :modal-style="{ width: '520px', maxWidth: '90vw' }"
+      :footer="false"
+      :mask-closable="true"
+      unmount-on-close
+      @cancel="closeAdvancedModal"
+    >
+      <a-form
+        class="advanced-form"
+        :model="advancedForm"
+        layout="horizontal"
+        label-align="right"
+        :label-col-props="{ span: 8 }"
+        :wrapper-col-props="{ span: 16 }"
+        size="small"
+      >
+        <a-form-item field="address" label="IP地址">
+          <a-input v-model="advancedForm.address" allow-clear />
+        </a-form-item>
+        <a-form-item field="port" label="端口">
+          <a-input v-model="advancedForm.port" allow-clear />
+        </a-form-item>
+        <a-form-item field="readCommunity" label="只读共同体名">
+          <a-input v-model="advancedForm.readCommunity" allow-clear />
+        </a-form-item>
+        <a-form-item field="writeCommunity" label="读写共同体名">
+          <a-input v-model="advancedForm.writeCommunity" allow-clear />
+        </a-form-item>
+        <a-form-item field="snmpVersion" label="SNMP版本">
+          <a-select v-model="advancedForm.snmpVersion">
+            <a-option :value="1">1</a-option>
+            <a-option :value="2" disabled>2</a-option>
+            <a-option :value="3" disabled>3</a-option>
+          </a-select>
+        </a-form-item>
+      </a-form>
+      <div class="advanced-modal-footer">
+        <a-space>
+          <a-button
+            type="primary"
+            size="small"
+            @click="confirmAdvancedModal"
+            :loading="setAuthenticationLoading"
+            >确定</a-button
+          >
+          <a-button size="small" @click="closeAdvancedModal">取消</a-button>
+        </a-space>
+      </div>
+    </a-modal>
   </div>
 </template>
 
@@ -679,5 +766,11 @@ select:focus {
   .content-area {
     grid-template-columns: 1fr;
   }
+}
+
+.advanced-modal-footer {
+  margin-top: 4px;
+  display: flex;
+  justify-content: center;
 }
 </style>
