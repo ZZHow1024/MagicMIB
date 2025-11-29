@@ -27,7 +27,7 @@ import java.io.IOException;
  *
  * @author ZZHow
  * create 2025/11/27
- * update 2025/11/27
+ * update 2025/11/29
  */
 @Slf4j
 @Service
@@ -60,7 +60,7 @@ public class SnmpServiceImpl implements SnmpService {
      */
     @Override
     public Result<String> get(SnmpGetDTO snmpGetDTO) {
-        return Result.success(this.performSnmpGet(AuthenticationRepository.address, snmpGetDTO.getOid(), AuthenticationRepository.readCommunity));
+        return Result.success(this.performSnmpGet(AuthenticationRepository.address, AuthenticationRepository.port, snmpGetDTO.getOid(), AuthenticationRepository.readCommunity));
     }
 
     /**
@@ -71,45 +71,48 @@ public class SnmpServiceImpl implements SnmpService {
      */
     @Override
     public Result<String> getNext(SnmpGetDTO snmpGetDTO) {
-        return Result.success(this.performSnmpGetNext(AuthenticationRepository.address, snmpGetDTO.getOid(), AuthenticationRepository.readCommunity));
+        return Result.success(this.performSnmpGetNext(AuthenticationRepository.address, AuthenticationRepository.port, snmpGetDTO.getOid(), AuthenticationRepository.readCommunity));
     }
 
     /**
      * 执行 SNMP Get 请求
      *
      * @param agentIp   Agent IP
+     * @param port      Agent 端口号
      * @param oid       目标 OID
      * @param community 共同体名
      * @return 结果字符串
      */
-    public String performSnmpGet(String agentIp, String oid, String community) {
-        return performSnmp(agentIp, oid, community, SnmpOperation.GET);
+    public String performSnmpGet(String agentIp, Integer port, String oid, String community) {
+        return performSnmp(agentIp, port, oid, community, SnmpOperation.GET);
     }
 
     /**
      * 执行 SNMP GetNext 请求
      *
      * @param agentIp   Agent IP
+     * @param port      Agent 端口号
      * @param oid       起始 OID
      * @param community 共同体名
      * @return 下一条 OID 及其值
      */
-    public String performSnmpGetNext(String agentIp, String oid, String community) {
-        return performSnmp(agentIp, oid, community, SnmpOperation.GET_NEXT);
+    public String performSnmpGetNext(String agentIp, Integer port, String oid, String community) {
+        return performSnmp(agentIp, port, oid, community, SnmpOperation.GET_NEXT);
     }
 
     /**
      * 执行通用 SNMP 请求
      *
      * @param agentIp   Agent IP
+     * @param port      Agent 端口号
      * @param oid       目标 OID
      * @param community 共同体名
      * @param operation SNMP 操作类型
      * @return 结果字符串
      */
-    public String performSnmp(String agentIp, String oid, String community, SnmpOperation operation) {
+    public String performSnmp(String agentIp, Integer port, String oid, String community, SnmpOperation operation) {
         // 创建目标地址 (默认端口 161)
-        Address targetAddress = new UdpAddress(agentIp + "/161");
+        Address targetAddress = new UdpAddress(agentIp + "/" + port);
 
         // 配置目标
         CommunityTarget target = new CommunityTarget();
