@@ -1,6 +1,7 @@
 package com.zzhow.magicmibbackend.service;
 
 import com.zzhow.magicmibbackend.pojo.dto.AuthenticationDTO;
+import com.zzhow.magicmibbackend.pojo.vo.AuthenticationVO;
 import com.zzhow.magicmibbackend.result.Result;
 
 /**
@@ -8,7 +9,7 @@ import com.zzhow.magicmibbackend.result.Result;
  *
  * @author ZZHow
  * create 2025/11/28
- * update 2025/11/28
+ * update 2025/11/29
  */
 public interface AuthenticationService {
     /**
@@ -18,4 +19,11 @@ public interface AuthenticationService {
      * @return 保存信息
      */
     Result<String> setAuthentication(AuthenticationDTO authenticationDTO);
+
+    /**
+     * 获取身份认证信息
+     *
+     * @return 身份认证信息视图
+     */
+    Result<AuthenticationVO> getAuthentication();
 }
