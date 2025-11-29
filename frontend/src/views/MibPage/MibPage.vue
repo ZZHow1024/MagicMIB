@@ -1,6 +1,6 @@
 <script setup>
 import { computed, ref } from 'vue'
-import { setAuthenticationService } from '@/api/authentication.js'
+import { getAuthenticationService, setAuthenticationService } from '@/api/authentication.js'
 import { Message } from '@arco-design/web-vue'
 
 const oidInput = ref('1.3.6.1.2.1.1.1.0')
@@ -290,24 +290,44 @@ const handleGo = () => {
 
 const setAuthenticationLoading = ref(false)
 const openAdvancedModal = () => {
+  getAuthentication()
   isAdvancedModalOpen.value = true
 }
 
 const confirmAdvancedModal = async () => {
   setAuthenticationLoading.value = true
-  try {
-    const res = await setAuthenticationService()
-    if (res.data.code === 0) Message.success('配置成功')
-    else Message.warning(res.data.message)
-  } catch (e) {
-    Message.error('系统错误')
-  }
+  await setAuthentication()
   setAuthenticationLoading.value = false
   isAdvancedModalOpen.value = false
 }
 const closeAdvancedModal = () => {
   isAdvancedModalOpen.value = false
 }
+
+const setAuthentication = async () => {
+  try {
+    const res = await setAuthenticationService(advancedForm.value)
+    if (res.data.code === 0) Message.success('配置成功')
+    else Message.warning(res.data.message)
+    // eslint-disable-next-line no-unused-vars
+  } catch (e) {
+    Message.error('系统错误')
+  }
+}
+const getAuthentication = async () => {
+  try {
+    const res = await getAuthenticationService()
+    if (res.data.code === 0) {
+      advancedForm.value = res.data.data
+    } else {
+      Message.warning(res.data.message)
+    }
+    // eslint-disable-next-line no-unused-vars
+  } catch (e) {
+    Message.error('系统错误')
+  }
+}
+getAuthentication()
 </script>
 
 <template>
@@ -315,7 +335,12 @@ const closeAdvancedModal = () => {
     <section class="control-bar">
       <div class="field address-field">
         <label for="mib-address">IP地址</label>
-        <input id="mib-address" v-model="advancedForm.address" type="text" />
+        <input
+          id="mib-address"
+          v-model="advancedForm.address"
+          type="text"
+          @blur="setAuthentication"
+        />
       </div>
       <a-button class="advanced-button" type="outline" size="small" @click="openAdvancedModal">
         高级...
