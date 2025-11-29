@@ -2,6 +2,7 @@
 import { computed, ref } from 'vue'
 import { getAuthenticationService, setAuthenticationService } from '@/api/authentication.js'
 import { Message } from '@arco-design/web-vue'
+import { snmpGetService } from '@/api/snmp.js'
 
 const oidInput = ref('1.3.6.1.2.1.1.1.0')
 const operations = ['Get', 'GetNext', 'Walk']
@@ -251,32 +252,7 @@ const descriptionText = computed(
   () => selectedNode.value?.description ?? '选择树节点以查看详细信息。',
 )
 
-const resultRows = ref([
-  {
-    id: 'row-1',
-    name: 'sysDescr',
-    oid: '1.3.6.1.2.1.1.1.0',
-    value: 'Example SNMP Agent v2 (Mock)',
-    type: 'OCTET STRING',
-    endpoint: '127.0.0.1:161',
-  },
-  {
-    id: 'row-2',
-    name: 'sysObjectID',
-    oid: '1.3.6.1.2.1.1.2.0',
-    value: '1.3.6.1.4.1.9.1.1208',
-    type: 'OBJECT IDENTIFIER',
-    endpoint: '127.0.0.1:161',
-  },
-  {
-    id: 'row-3',
-    name: 'sysName',
-    oid: '1.3.6.1.2.1.1.5.0',
-    value: 'SNMP-LAB-NODE',
-    type: 'OCTET STRING',
-    endpoint: '127.0.0.1:161',
-  },
-])
+const resultRows = ref([])
 
 const hasResults = computed(() => resultRows.value.length > 0)
 
@@ -284,8 +260,11 @@ const selectNode = (node) => {
   selectedNode.value = node
 }
 
-const handleGo = () => {
-  console.log('Trigger operation:', selectedOperation.value, oidInput.value)
+const goLoading = ref(false)
+const handleGo = async () => {
+  goLoading.value = true
+  await snmpGet()
+  goLoading.value = false
 }
 
 const setAuthenticationLoading = ref(false)
@@ -304,6 +283,12 @@ const closeAdvancedModal = () => {
   isAdvancedModalOpen.value = false
 }
 
+// 清空结果表格
+const clearResults = () => {
+  resultRows.value = []
+}
+
+// 设置身份认证信息
 const setAuthentication = async () => {
   try {
     const res = await setAuthenticationService(advancedForm.value)
@@ -314,6 +299,8 @@ const setAuthentication = async () => {
     Message.error('系统错误')
   }
 }
+
+// 获取身份认证信息
 const getAuthentication = async () => {
   try {
     const res = await getAuthenticationService()
@@ -328,6 +315,36 @@ const getAuthentication = async () => {
   }
 }
 getAuthentication()
+
+// 发起 SNMP Get 请求
+const snmpGet = async () => {
+  const currentOid = oidInput.value
+  const selectedTreeNode = selectedNode.value
+  const nodeName = selectedTreeNode?.label || 'Unknown'
+  const currentEndpoint = `${advancedForm.value.address}:${advancedForm.value.port}`
+
+  try {
+    const res = await snmpGetService(currentOid)
+    if (res.data.code === 0) {
+      const snmpData = res.data.data
+      const newResult = {
+        id: `row-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+        name: nodeName,
+        oid: currentOid,
+        value: snmpData || '',
+        type: snmpData.type || 'OCTET STRING',
+        endpoint: currentEndpoint,
+      }
+      resultRows.value.push(newResult)
+      Message.success('请求成功')
+    } else {
+      Message.warning(res.data.message)
+    }
+    // eslint-disable-next-line no-unused-vars
+  } catch (e) {
+    Message.error('系统错误')
+  }
+}
 </script>
 
 <template>
@@ -407,6 +424,12 @@ getAuthentication()
       <div class="right-panel card">
         <div class="section-header">
           <h3>Result Table</h3>
+          <div class="table-meta">
+            <span class="hint" v-if="hasResults">{{ resultRows.length }} 条记录</span>
+            <button v-if="hasResults" class="refresh-button" type="button" @click="clearResults">
+              清空
+            </button>
+          </div>
         </div>
         <div v-if="hasResults" class="result-table-wrapper">
           <table class="result-table">
@@ -433,7 +456,7 @@ getAuthentication()
             </tbody>
           </table>
         </div>
-        <div v-else class="no-result">暂无数据，点击 GO 按钮后将展示返回结果</div>
+        <div v-else class="no-result">暂无数据，点击 GO 按钮执行 SNMP 请求后将展示返回结果</div>
       </div>
     </section>
 
