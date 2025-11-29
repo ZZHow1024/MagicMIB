@@ -2,7 +2,7 @@
 import { computed, ref } from 'vue'
 import { getAuthenticationService, setAuthenticationService } from '@/api/authentication.js'
 import { Message } from '@arco-design/web-vue'
-import { snmpGetService } from '@/api/snmp.js'
+import { snmpGetNextService, snmpGetService } from '@/api/snmp.js'
 
 const oidInput = ref('1.3.6.1.2.1.1.1.0')
 const operations = ['Get', 'GetNext', 'Walk']
@@ -263,7 +263,8 @@ const selectNode = (node) => {
 const goLoading = ref(false)
 const handleGo = async () => {
   goLoading.value = true
-  await snmpGet()
+  if (selectedOperation.value === operations[0]) await snmpGet()
+  else if (selectedOperation.value === operations[1]) await snmpGetNext()
   goLoading.value = false
 }
 
@@ -319,9 +320,36 @@ getAuthentication()
 // 发起 SNMP Get 请求
 const snmpGet = async () => {
   const currentOid = oidInput.value
-  const selectedTreeNode = selectedNode.value
-  const nodeName = selectedTreeNode?.label || 'Unknown'
   const currentEndpoint = `${advancedForm.value.address}:${advancedForm.value.port}`
+
+  // 根据输入的OID查找对应的节点名称
+  let nodeName = 'Unknown'
+  const findNodeByOid = (nodes, targetOid) => {
+    for (const node of nodes) {
+      if (node.oid === targetOid) {
+        return node.label
+      }
+      if (node.children?.length) {
+        const found = findNodeByOid(node.children, targetOid)
+        if (found) return found
+      }
+    }
+    return null
+  }
+
+  const foundName = findNodeByOid(mibTree.value, currentOid)
+  if (foundName) {
+    nodeName = foundName
+  } else {
+    // 如果找不到精确匹配，尝试查找父节点
+    const parentOid = currentOid.substring(0, currentOid.lastIndexOf('.'))
+    if (parentOid) {
+      const parentName = findNodeByOid(mibTree.value, parentOid)
+      if (parentName) {
+        nodeName = parentName
+      }
+    }
+  }
 
   try {
     const res = await snmpGetService(currentOid)
@@ -336,6 +364,88 @@ const snmpGet = async () => {
         endpoint: currentEndpoint,
       }
       resultRows.value.push(newResult)
+      Message.success('请求成功')
+    } else {
+      Message.warning(res.data.message)
+    }
+    // eslint-disable-next-line no-unused-vars
+  } catch (e) {
+    Message.error('系统错误')
+  }
+}
+
+// 发起 SNMP GetNext 请求
+const snmpGetNext = async () => {
+  const currentOid = oidInput.value
+  const currentEndpoint = `${advancedForm.value.address}:${advancedForm.value.port}`
+
+  try {
+    const res = await snmpGetNextService(currentOid)
+    if (res.data.code === 0) {
+      // GetNext返回格式: "真正的OID = 对应的value"
+      const nextResult = res.data.data
+      if (nextResult && typeof nextResult === 'string') {
+        // 解析 "OID = value"
+        const equalIndex = nextResult.indexOf('=')
+        if (equalIndex !== -1) {
+          const nextOid = nextResult.substring(0, equalIndex).trim()
+          const nextValue = nextResult.substring(equalIndex + 1).trim()
+
+          // 查找MIB树中对应的节点名称
+          let nodeName = 'Unknown'
+          const findNodeByOid = (nodes, targetOid) => {
+            for (const node of nodes) {
+              if (node.oid === targetOid) {
+                return node.label
+              }
+              if (node.children?.length) {
+                const found = findNodeByOid(node.children, targetOid)
+                if (found) return found
+              }
+            }
+            return null
+          }
+          const foundName = findNodeByOid(mibTree.value, nextOid)
+          if (foundName) {
+            nodeName = foundName
+          } else {
+            // 如果找不到精确匹配，尝试查找父节点
+            const parentOid = nextOid.substring(0, nextOid.lastIndexOf('.'))
+            if (parentOid) {
+              const parentName = findNodeByOid(mibTree.value, parentOid)
+              if (parentName) {
+                nodeName = parentName
+              }
+            }
+          }
+          const newResult = {
+            id: `row-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+            name: nodeName,
+            oid: nextOid,
+            value: nextValue,
+            type: 'OCTET STRING',
+            endpoint: currentEndpoint,
+          }
+          resultRows.value.push(newResult)
+
+          // 更新输入框的OID为GetNext返回的真实OID
+          oidInput.value = nextOid
+        } else {
+          // 如果没有等号，整个字符串作为OID，值为空
+          const newResult = {
+            id: `row-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+            name: 'Unknown',
+            oid: nextResult.trim(),
+            value: '',
+            type: 'OCTET STRING',
+            endpoint: currentEndpoint,
+          }
+          resultRows.value.push(newResult)
+
+          // 更新输入框的OID
+          oidInput.value = nextResult.trim()
+        }
+      }
       Message.success('请求成功')
     } else {
       Message.warning(res.data.message)

@@ -6,3 +6,10 @@ export const snmpGetService = (oid) => {
     params: { oid },
   })
 }
+
+// 发起 SNMP GetNext 请求接口
+export const snmpGetNextService = (oid) => {
+  return request.get('/api/snmp/get-next', {
+    params: { oid },
+  })
+}
