@@ -108,11 +108,9 @@ $text-muted: #6b758b;
 }
 
 .layout-content {
-  padding: 32px;
   background: $bg-grey;
   display: flex;
   flex-direction: column;
-  gap: 24px;
 }
 
 .layout-footer {

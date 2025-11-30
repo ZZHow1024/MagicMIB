@@ -407,7 +407,7 @@ const loadMib = async () => {
               :show-line="true"
               :block-node="true"
               :virtual-list-props="{
-                height: 320,
+                height: 200,
                 threshold: 50,
                 itemKey: 'key',
               }"
@@ -429,17 +429,19 @@ const loadMib = async () => {
             <h3>对象详情</h3>
             <span class="hint" v-if="selectedNode">OID: {{ selectedNode.oid }}</span>
           </div>
-          <div v-if="selectedNode" class="detail-grid">
-            <div v-for="field in detailFields" :key="field.label" class="detail-row">
-              <span class="label">{{ field.label }}</span>
-              <span class="value">{{ field.value }}</span>
+          <div class="detail-content">
+            <div v-if="selectedNode" class="detail-grid">
+              <div v-for="field in detailFields" :key="field.label" class="detail-row">
+                <span class="label">{{ field.label }}</span>
+                <span class="value">{{ field.value }}</span>
+              </div>
+              <div class="description-block">
+                <span class="label">描述</span>
+                <p class="description">{{ descriptionText }}</p>
+              </div>
             </div>
-            <div class="description-block">
-              <span class="label">描述</span>
-              <p class="description">{{ descriptionText }}</p>
-            </div>
+            <div v-else class="empty-state">请选择左侧树节点查看详细信息</div>
           </div>
-          <div v-else class="empty-state">请选择左侧树节点查看详细信息</div>
         </div>
       </div>
 
@@ -454,29 +456,31 @@ const loadMib = async () => {
           </div>
         </div>
         <div v-if="hasResults" class="result-table-wrapper">
-          <table class="result-table">
-            <thead>
-              <tr>
-                <th>#</th>
-                <th>Name / OID</th>
-                <th>Value</th>
-                <th>Type</th>
-                <th>IP:Port</th>
-              </tr>
-            </thead>
-            <tbody>
-              <tr v-for="(row, index) in resultRows" :key="row.id">
-                <td>{{ index + 1 }}</td>
-                <td>
-                  <p class="name">{{ row.name }}</p>
-                  <p class="oid">{{ row.oid }}</p>
-                </td>
-                <td>{{ row.value }}</td>
-                <td>{{ row.type }}</td>
-                <td>{{ row.endpoint }}</td>
-              </tr>
-            </tbody>
-          </table>
+          <div class="result-table-container">
+            <table class="result-table">
+              <thead>
+                <tr>
+                  <th>#</th>
+                  <th>Name / OID</th>
+                  <th>Value</th>
+                  <th>Type</th>
+                  <th>IP:Port</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr v-for="(row, index) in resultRows" :key="row.id">
+                  <td>{{ index + 1 }}</td>
+                  <td>
+                    <p class="name">{{ row.name }}</p>
+                    <p class="oid">{{ row.oid }}</p>
+                  </td>
+                  <td>{{ row.value }}</td>
+                  <td>{{ row.type }}</td>
+                  <td>{{ row.endpoint }}</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
         </div>
         <div v-else class="no-result">暂无数据，点击 GO 按钮执行 SNMP 请求后将展示返回结果</div>
       </div>
@@ -570,9 +574,10 @@ const loadMib = async () => {
   display: flex;
   flex-direction: column;
   gap: 16px;
-  height: 100%;
+  height: calc(100vh - 170px);
   padding: 16px;
   background: #f4f5f7;
+  overflow: hidden;
 }
 
 .control-bar {
@@ -663,17 +668,21 @@ select:focus {
   grid-template-columns: 11fr 14fr;
   gap: 16px;
   flex: 1;
+  overflow: hidden;
 }
 
 .left-panel {
   display: flex;
   flex-direction: column;
   gap: 14px;
+  overflow: hidden;
 }
 
 .right-panel {
   display: flex;
   flex-direction: column;
+  overflow: hidden;
+  height: calc(100vh - 305px);
 }
 
 .card {
@@ -684,7 +693,53 @@ select:focus {
   box-shadow: 0 2px 4px rgba(15, 23, 42, 0.04);
 }
 
+.tree-section {
+  flex: 0 0 auto;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.detail-section {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  min-height: 0;
+}
+
+.detail-content {
+  flex: 1;
+  overflow-y: auto;
+  padding-right: 4px;
+}
+
+/* 自定义滚动条样式 */
+.detail-content::-webkit-scrollbar,
+.result-table-container::-webkit-scrollbar {
+  width: 6px;
+}
+
+.detail-content::-webkit-scrollbar-track,
+.result-table-container::-webkit-scrollbar-track {
+  background: #f1f5f9;
+  border-radius: 3px;
+}
+
+.detail-content::-webkit-scrollbar-thumb,
+.result-table-container::-webkit-scrollbar-thumb {
+  background: #cbd5e1;
+  border-radius: 3px;
+  transition: background 0.2s ease;
+}
+
+.detail-content::-webkit-scrollbar-thumb:hover,
+.result-table-container::-webkit-scrollbar-thumb:hover {
+  background: #94a3b8;
+}
+
 .section-header {
+  height: 5px;
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -848,10 +903,18 @@ select:focus {
 }
 
 .result-table-wrapper {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
   border: 1px solid #e2e8f0;
   border-radius: 10px;
   overflow: hidden;
   box-shadow: inset 0 1px 0 rgba(15, 23, 42, 0.04);
+}
+
+.result-table-container {
+  flex: 1;
+  overflow-y: auto;
 }
 
 .result-table {
@@ -862,6 +925,9 @@ select:focus {
 
 .result-table thead {
   background: #f8fafc;
+  position: sticky;
+  top: 0;
+  z-index: 10;
 }
 
 .result-table th,
@@ -903,6 +969,7 @@ select:focus {
   color: #94a3b8;
   font-size: 14px;
   padding: 24px;
+  margin: 0;
 }
 
 @media (max-width: 1280px) {
