@@ -3,12 +3,14 @@ import { computed, ref } from 'vue'
 import { getAuthenticationService, setAuthenticationService } from '@/api/authentication.js'
 import { Message } from '@arco-design/web-vue'
 import { snmpGetNextService, snmpGetService } from '@/api/snmp.js'
+import { getMibService } from '@/api/mib.js'
 
 const oidInput = ref('1.3.6.1.2.1.1.1.0')
 const operations = ['Get', 'GetNext', 'Walk']
 const selectedOperation = ref(operations[0])
 
 const isAdvancedModalOpen = ref(false)
+const isMibTreeModalOpen = ref(false)
 
 const advancedForm = ref({
   address: '127.0.0.1',
@@ -18,202 +20,19 @@ const advancedForm = ref({
   snmpVersion: 1,
 })
 
-const mibTree = ref([
-  {
-    id: 'iso',
-    label: 'iso',
-    oid: '1',
-    mib: 'root',
-    syntax: 'SEQUENCE',
-    access: 'not-accessible',
-    status: 'mandatory',
-    description: 'Root node of the global OID namespace.',
-    children: [
-      {
-        id: 'org',
-        label: 'org',
-        oid: '1.3',
-        mib: 'root',
-        syntax: 'SEQUENCE',
-        access: 'not-accessible',
-        status: 'mandatory',
-        description: 'Routes object identifiers allocated to organizations.',
-        children: [
-          {
-            id: 'dod',
-            label: 'dod',
-            oid: '1.3.6',
-            mib: 'root',
-            syntax: 'SEQUENCE',
-            access: 'not-accessible',
-            status: 'mandatory',
-            description: 'Department of Defense branch.',
-            children: [
-              {
-                id: 'internet',
-                label: 'internet',
-                oid: '1.3.6.1',
-                mib: 'root',
-                syntax: 'SEQUENCE',
-                access: 'not-accessible',
-                status: 'mandatory',
-                description: 'Internet-specific information.',
-                children: [
-                  {
-                    id: 'mgmt',
-                    label: 'mgmt',
-                    oid: '1.3.6.1.2',
-                    mib: 'root',
-                    syntax: 'SEQUENCE',
-                    access: 'not-accessible',
-                    status: 'mandatory',
-                    description: 'Management branch containing standard MIBs.',
-                    children: [
-                      {
-                        id: 'mib2',
-                        label: 'mib-2',
-                        oid: '1.3.6.1.2.1',
-                        mib: 'RFC1213-MIB',
-                        syntax: 'SEQUENCE',
-                        access: 'not-accessible',
-                        status: 'mandatory',
-                        description: 'Standard managed objects defined in RFC1213.',
-                        children: [
-                          {
-                            id: 'system',
-                            label: 'system',
-                            oid: '1.3.6.1.2.1.1',
-                            mib: 'RFC1213-MIB',
-                            syntax: 'SEQUENCE',
-                            access: 'not-accessible',
-                            status: 'mandatory',
-                            description: 'System group exposing device level properties.',
-                            children: [
-                              {
-                                id: 'sysDescr',
-                                label: 'sysDescr',
-                                oid: '1.3.6.1.2.1.1.1.0',
-                                mib: 'RFC1213-MIB',
-                                syntax: 'DisplayString (SIZE 0..255)',
-                                access: 'read-only',
-                                status: 'mandatory',
-                                description:
-                                  'Textual description of the entity including hardware, operating system, and networking software.',
-                              },
-                              {
-                                id: 'sysObjectID',
-                                label: 'sysObjectID',
-                                oid: '1.3.6.1.2.1.1.2.0',
-                                mib: 'RFC1213-MIB',
-                                syntax: 'OBJECT IDENTIFIER',
-                                access: 'read-only',
-                                status: 'mandatory',
-                                description:
-                                  'Vendor specific identification for the managed device.',
-                              },
-                              {
-                                id: 'sysContact',
-                                label: 'sysContact',
-                                oid: '1.3.6.1.2.1.1.4.0',
-                                mib: 'RFC1213-MIB',
-                                syntax: 'DisplayString',
-                                access: 'read-write',
-                                status: 'mandatory',
-                                description:
-                                  'The textual identification of the system contact person.',
-                              },
-                              {
-                                id: 'sysName',
-                                label: 'sysName',
-                                oid: '1.3.6.1.2.1.1.5.0',
-                                mib: 'RFC1213-MIB',
-                                syntax: 'DisplayString',
-                                access: 'read-write',
-                                status: 'mandatory',
-                                description: 'An administratively assigned name for the node.',
-                              },
-                              {
-                                id: 'sysLocation',
-                                label: 'sysLocation',
-                                oid: '1.3.6.1.2.1.1.6.0',
-                                mib: 'RFC1213-MIB',
-                                syntax: 'DisplayString',
-                                access: 'read-write',
-                                status: 'mandatory',
-                                description: 'The physical location of this node.',
-                              },
-                              {
-                                id: 'sysServices',
-                                label: 'sysServices',
-                                oid: '1.3.6.1.2.1.1.7.0',
-                                mib: 'RFC1213-MIB',
-                                syntax: 'Integer32',
-                                access: 'read-only',
-                                status: 'mandatory',
-                                description:
-                                  'A value indicating the set of services that this entity offers.',
-                              },
-                            ],
-                          },
-                          {
-                            id: 'interfaces',
-                            label: 'interfaces',
-                            oid: '1.3.6.1.2.1.2',
-                            mib: 'RFC1213-MIB',
-                            syntax: 'SEQUENCE',
-                            access: 'not-accessible',
-                            status: 'mandatory',
-                            description: 'Information about network interfaces.',
-                            children: [
-                              {
-                                id: 'ifNumber',
-                                label: 'ifNumber',
-                                oid: '1.3.6.1.2.1.2.1.0',
-                                mib: 'RFC1213-MIB',
-                                syntax: 'Integer32',
-                                access: 'read-only',
-                                status: 'mandatory',
-                                description:
-                                  'The number of network interfaces present on the system.',
-                              },
-                              {
-                                id: 'ifTable',
-                                label: 'ifTable',
-                                oid: '1.3.6.1.2.1.2.2',
-                                mib: 'RFC1213-MIB',
-                                syntax: 'SEQUENCE OF ifEntry',
-                                access: 'not-accessible',
-                                status: 'mandatory',
-                                description:
-                                  'Table of interface entries describing individual interfaces.',
-                                children: [
-                                  {
-                                    id: 'ifEntry',
-                                    label: 'ifEntry',
-                                    oid: '1.3.6.1.2.1.2.2.1',
-                                    mib: 'RFC1213-MIB',
-                                    syntax: 'SEQUENCE',
-                                    access: 'not-accessible',
-                                    status: 'mandatory',
-                                    description: 'Entry describing a particular interface row.',
-                                  },
-                                ],
-                              },
-                            ],
-                          },
-                        ],
-                      },
-                    ],
-                  },
-                ],
-              },
-            ],
-          },
-        ],
-      },
-    ],
-  },
-])
+const mibTreeOptions = [
+  'SNMPv2-SMI',
+  'SNMPv2-MIB',
+  'RFC1213-MIB',
+  'IF-MIB',
+  'IP-MIB',
+  'TCP-MIB',
+  'UDP-MIB',
+  'RMON-MIB',
+  'RMON2-MIB',
+]
+const mibFiles = ref([])
+const mibTree = ref([])
 
 const selectedNode = ref(mibTree.value[0]?.children?.[0] ?? mibTree.value[0] ?? null)
 
@@ -258,6 +77,7 @@ const hasResults = computed(() => resultRows.value.length > 0)
 
 const selectNode = (node) => {
   selectedNode.value = node
+  oidInput.value = node.oid // 自动更新 OID 输入框为选中节点的 OID
 }
 
 const goLoading = ref(false)
@@ -282,6 +102,14 @@ const confirmAdvancedModal = async () => {
 }
 const closeAdvancedModal = () => {
   isAdvancedModalOpen.value = false
+}
+
+const openMibTreeModal = () => {
+  isMibTreeModalOpen.value = true
+}
+
+const closeMibTreeModal = () => {
+  isMibTreeModalOpen.value = false
 }
 
 // 清空结果表格
@@ -455,6 +283,23 @@ const snmpGetNext = async () => {
     Message.error('系统错误')
   }
 }
+
+// 获取当前加载的 MIB 文件
+const getMib = async () => {
+  try {
+    const res = await getMibService()
+    if (res.data.code === 0) {
+      mibFiles.value = res.data.data.mibFiles
+      mibTree.value = res.data.data.mibTree
+    } else {
+      Message.warning(res.data.message)
+    }
+    // eslint-disable-next-line no-unused-vars
+  } catch (e) {
+    Message.error('系统错误')
+  }
+}
+getMib()
 </script>
 
 <template>
@@ -492,7 +337,9 @@ const snmpGetNext = async () => {
         <div class="card tree-section">
           <div class="section-header">
             <h3>MIB Tree</h3>
-            <span class="hint">模拟数据</span>
+            <button class="manage-mib-button" type="button" @click="openMibTreeModal">
+              管理MIB树
+            </button>
           </div>
           <div class="tree-container" role="tree">
             <div
@@ -620,6 +467,27 @@ const snmpGetNext = async () => {
           >
           <a-button size="small" @click="closeAdvancedModal">取消</a-button>
         </a-space>
+      </div>
+    </a-modal>
+
+    <a-modal
+      v-model:visible="isMibTreeModalOpen"
+      title="管理MIB树"
+      modal-class="mib-tree-modal"
+      :modal-style="{ width: '400px', maxWidth: '90vw' }"
+      :footer="false"
+      :mask-closable="true"
+      unmount-on-close
+      @cancel="closeMibTreeModal"
+    >
+      <div class="mib-tree-content">
+        <a-checkbox-group :options="mibTreeOptions" direction="vertical" v-model="mibFiles" />
+        <div class="mib-tree-footer">
+          <a-space>
+            <a-button type="primary" size="small" @click="closeMibTreeModal"> 确定 </a-button>
+            <a-button size="small" @click="closeMibTreeModal">取消</a-button>
+          </a-space>
+        </div>
       </div>
     </a-modal>
   </div>
@@ -930,5 +798,35 @@ select:focus {
   margin-top: 4px;
   display: flex;
   justify-content: center;
+}
+
+.manage-mib-button {
+  height: 28px;
+  border-radius: 4px;
+  font-size: 12px;
+  padding: 0 12px;
+  border: 1px solid #d1d9e6;
+  background: #ffffff;
+  color: #1f2937;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.manage-mib-button:hover {
+  border-color: #94a3b8;
+  background: #f8fafc;
+}
+
+.mib-tree-content {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.mib-tree-footer {
+  display: flex;
+  justify-content: center;
+  padding-top: 8px;
+  border-top: 1px solid #f0f2f5;
 }
 </style>
