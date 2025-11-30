@@ -39,7 +39,7 @@ public class MibServiceImpl implements MibService {
      */
     @Override
     public Result<List<MibNode>> loadMib(MibDTO mibDTO) {
-        MibRepository.mibTree = mibParseUtil.parseMibFiles(MibRepository.mibFiles);
+        MibRepository.mibTree = mibParseUtil.parseMibFiles(mibDTO.getMibFiles());
         MibRepository.mibFiles = mibDTO.getMibFiles();
 
         return Result.success(MibRepository.mibTree);

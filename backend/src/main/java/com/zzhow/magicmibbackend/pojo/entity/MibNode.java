@@ -22,6 +22,8 @@ import java.util.List;
 public class MibNode {
     // ID
     private String id;
+    // key
+    private String key;
     // 标签
     private String label;
     // OID
@@ -38,15 +40,4 @@ public class MibNode {
     private String description;
     // 子节点列表，用于构建 MIB 树形结构
     private List<MibNode> children = new ArrayList<>();
-
-    public MibNode(String id, String label, String oid, String mib, String syntax, String access, String status, String description) {
-        this.id = id;
-        this.label = label;
-        this.oid = oid;
-        this.mib = mib;
-        this.syntax = syntax;
-        this.access = access;
-        this.status = status;
-        this.description = description;
-    }
 }

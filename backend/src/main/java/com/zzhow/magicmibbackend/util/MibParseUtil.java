@@ -138,11 +138,6 @@ public class MibParseUtil {
         internet.getChildren().add(mgmt);
         nodeMap.put(mgmt.getOid(), mgmt);
 
-        // mib-2(1) 在 mgmt(2) 下，OID为 1.3.6.1.2.1
-        MibNode mib2 = createBasicNode("mib-2", "1.3.6.1.2.1", "Standard managed objects defined in RFC1213.", "RFC1213-MIB", "SEQUENCE", "not-accessible", "mandatory");
-        mgmt.getChildren().add(mib2);
-        nodeMap.put(mib2.getOid(), mib2);
-
         // experimental(3) 在 internet(1) 下，OID为 1.3.6.1.3
         MibNode experimental = createBasicNode("experimental", "1.3.6.1.3", "Experimental", "root", "SEQUENCE", "not-accessible", "mandatory");
         internet.getChildren().add(experimental);
@@ -192,6 +187,7 @@ public class MibParseUtil {
     private MibNode createBasicNode(String label, String oid, String description, String mib, String syntax, String access, String status) {
         MibNode node = new MibNode();
         node.setId(oid);
+        node.setKey(oid);
         node.setLabel(label);
         node.setOid(oid);
         node.setMib(mib);
@@ -268,6 +264,7 @@ public class MibParseUtil {
             // 创建节点（使用 OID 作为唯一标识）
             MibNode node = new MibNode();
             node.setId(oid);
+            node.setKey(oid);
             node.setLabel(name);
             node.setOid(oid);
             node.setMib(mibName);
