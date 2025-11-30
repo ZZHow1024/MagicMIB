@@ -11,9 +11,11 @@ import org.springframework.context.annotation.Import;
 import static org.junit.jupiter.api.Assertions.*;
 
 /**
+ * SNMP 服务类的测试类
+ *
  * @author ZZHow
  * create 2025/11/27
- * update 2025/11/27
+ * update 2025/11/30
  */
 @SpringBootTest
 @Import(SnmpConfiguration.class)
@@ -23,6 +25,7 @@ class SnmpServiceTest {
     private SnmpServiceImpl snmpServiceImpl;
 
     private static final String TEST_AGENT_IP = "127.0.0.1"; // Agent IP
+    private static final Integer TEST_AGENT_PORT = 161; // Agent PORT
     private static final String TEST_COMMUNITY = "network"; // Community
     private static final String SYS_DESCR_OID = "1.3.6.1.2.1.1.1.0"; // OID(System Description)
 
@@ -30,7 +33,7 @@ class SnmpServiceTest {
     @DisplayName("测试成功的SNMP Get请求")
     void testSnmpGet() {
         try {
-            String result = snmpServiceImpl.performSnmpGet(TEST_AGENT_IP, SYS_DESCR_OID, TEST_COMMUNITY);
+            String result = snmpServiceImpl.performSnmpGet(TEST_AGENT_IP, TEST_AGENT_PORT, SYS_DESCR_OID, TEST_COMMUNITY);
             System.out.println("成功获取 sysDescr：" + result);
         } catch (Exception e) {
             fail("SNMP Get通信失败，异常信息：" + e.getMessage());
@@ -41,7 +44,7 @@ class SnmpServiceTest {
     @DisplayName("测试成功的SNMP GetNext请求")
     void testSnmpGetNext() {
         try {
-            String result = snmpServiceImpl.performSnmpGetNext(TEST_AGENT_IP, SYS_DESCR_OID, TEST_COMMUNITY);
+            String result = snmpServiceImpl.performSnmpGetNext(TEST_AGENT_IP, TEST_AGENT_PORT, SYS_DESCR_OID, TEST_COMMUNITY);
             System.out.println("成功获取 sysDescr：" + result);
         } catch (Exception e) {
             fail("SNMP Get通信失败，异常信息：" + e.getMessage());
