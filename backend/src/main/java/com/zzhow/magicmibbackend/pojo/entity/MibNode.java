@@ -9,6 +9,8 @@ import java.util.ArrayList;
 import java.util.List;
 
 /**
+ * MIB 结点实体类
+ *
  * @author ZZHow
  * create 2025/11/30
  * update 2025/11/30
