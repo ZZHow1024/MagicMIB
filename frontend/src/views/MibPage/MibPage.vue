@@ -3,10 +3,10 @@ import { computed, ref } from 'vue'
 import { getAuthenticationService, setAuthenticationService } from '@/api/authentication.js'
 import { Message } from '@arco-design/web-vue'
 import { snmpGetNextService, snmpGetService } from '@/api/snmp.js'
-import { getMibService } from '@/api/mib.js'
+import { getMibService, loadMibService } from '@/api/mib.js'
 
 const oidInput = ref('1.3.6.1.2.1.1.1.0')
-const operations = ['Get', 'GetNext', 'Walk']
+const operations = ['Get', 'GetNext']
 const selectedOperation = ref(operations[0])
 
 const isAdvancedModalOpen = ref(false)
@@ -21,35 +21,36 @@ const advancedForm = ref({
 })
 
 const mibTreeOptions = [
-  'SNMPv2-SMI',
-  'SNMPv2-MIB',
-  'RFC1213-MIB',
-  'IF-MIB',
-  'IP-MIB',
-  'TCP-MIB',
-  'UDP-MIB',
-  'RMON-MIB',
-  'RMON2-MIB',
+  { label: 'SNMPv2-SMI', value: 'SNMPv2-SMI', disabled: false },
+  { label: 'SNMPv2-MIB', value: 'SNMPv2-MIB', disabled: false },
+  { label: 'RFC1213-MIB', value: 'RFC1213-MIB', disabled: true },
+  { label: 'IF-MIB', value: 'IF-MIB', disabled: false },
+  { label: 'IP-MIB', value: 'IP-MIB', disabled: false },
+  { label: 'TCP-MIB', value: 'TCP-MIB', disabled: false },
+  { label: 'UDP-MIB', value: 'UDP-MIB', disabled: false },
+  { label: 'RMON-MIB', value: 'RMON-MIB', disabled: false },
+  { label: 'RMON2-MIB', value: 'RMON2-MIB', disabled: false },
 ]
 const mibFiles = ref([])
 const mibTree = ref([])
+const mibLoading = ref(true)
+const selectedNode = ref(null)
 
-const selectedNode = ref(mibTree.value[0]?.children?.[0] ?? mibTree.value[0] ?? null)
+// 处理树节点选择
+const handleSelect = (selectedKeysArray, { node }) => {
+  selectNode(node)
+}
 
-const treeRows = computed(() => {
-  const rows = []
-  const traverse = (nodes, depth = 0) => {
-    nodes.forEach((node) => {
-      rows.push({ node, depth })
-      if (node.children?.length) {
-        traverse(node.children, depth + 1)
-      }
-    })
-  }
+// 默认展开的节点keys - 设置默认展开的节点
+const expandedKeys = ref([])
 
-  traverse(mibTree.value)
-  return rows
-})
+// 处理树节点展开
+const handleTreeExpand = (keys) => {
+  expandedKeys.value = keys
+}
+
+// 选中的节点keys - 响应式处理
+const selectedKeys = ref([])
 
 const detailFields = computed(() => {
   if (!selectedNode.value) {
@@ -76,8 +77,10 @@ const resultRows = ref([])
 const hasResults = computed(() => resultRows.value.length > 0)
 
 const selectNode = (node) => {
+  if (!node) return
   selectedNode.value = node
-  oidInput.value = node.oid // 自动更新 OID 输入框为选中节点的 OID
+  oidInput.value = node.oid || '' // 自动更新 OID 输入框为选中节点的 OID
+  selectedKeys.value = node.key ? [node.key] : [] // 同步更新选中状态
 }
 
 const goLoading = ref(false)
@@ -106,6 +109,14 @@ const closeAdvancedModal = () => {
 
 const openMibTreeModal = () => {
   isMibTreeModalOpen.value = true
+}
+
+const mibFilesLoading = ref(false)
+const confirmMibFiles = async () => {
+  mibFilesLoading.value = true
+  await loadMib()
+  mibFilesLoading.value = false
+  isMibTreeModalOpen.value = false
 }
 
 const closeMibTreeModal = () => {
@@ -286,11 +297,53 @@ const snmpGetNext = async () => {
 
 // 获取当前加载的 MIB 文件
 const getMib = async () => {
+  mibLoading.value = true
   try {
     const res = await getMibService()
     if (res.data.code === 0) {
-      mibFiles.value = res.data.data.mibFiles
-      mibTree.value = res.data.data.mibTree
+      mibFiles.value = res.data.data.mibFiles || []
+      mibTree.value = res.data.data.mibTree || []
+      console.log('MIB tree loaded:', mibTree.value)
+
+      // 设置默认展开的节点：iso, org, dod, internet, mib-2
+      const defaultExpandedIds = ['1', '1.3', '1.3.6', '1.3.6.1', '1.3.6.1.2', '1.3.6.1.2.1']
+      expandedKeys.value = defaultExpandedIds
+
+      // 如果没有选中节点且有数据，默认选择第一个叶子节点
+      if (!selectedNode.value && mibTree.value && mibTree.value.length > 0) {
+        const findFirstLeaf = (nodes) => {
+          for (const node of nodes) {
+            if (!node.children || node.children.length === 0) {
+              return node
+            }
+            const leaf = findFirstLeaf(node.children)
+            if (leaf) return leaf
+          }
+          return null
+        }
+        const firstLeaf = findFirstLeaf(mibTree.value)
+        if (firstLeaf) {
+          selectNode(firstLeaf)
+        }
+      }
+    } else {
+      Message.warning(res.data.message)
+    }
+    // eslint-disable-next-line no-unused-vars
+  } catch (e) {
+    Message.error('系统错误')
+  } finally {
+    mibLoading.value = false
+  }
+}
+getMib()
+// 加载 MIB 文件
+const loadMib = async () => {
+  try {
+    const res = await loadMibService(mibFiles.value)
+    if (res.data.code === 0) {
+      mibTree.value = res.data.data || []
+      Message.success('加载成功')
     } else {
       Message.warning(res.data.message)
     }
@@ -299,7 +352,6 @@ const getMib = async () => {
     Message.error('系统错误')
   }
 }
-getMib()
 </script>
 
 <template>
@@ -341,21 +393,34 @@ getMib()
               管理MIB树
             </button>
           </div>
-          <div class="tree-container" role="tree">
-            <div
-              v-for="row in treeRows"
-              :key="row.node.id"
-              class="tree-row"
-              :class="{ active: selectedNode && selectedNode.id === row.node.id }"
-              :style="{ paddingLeft: `${row.depth * 16 + 12}px` }"
-              role="treeitem"
-              tabindex="0"
-              @click="selectNode(row.node)"
-              @keyup.enter="selectNode(row.node)"
-            >
-              <span class="tree-label">{{ row.node.label }}</span>
-              <span class="tree-oid">{{ row.node.oid }}</span>
+          <div class="arco-tree-container">
+            <div v-if="mibLoading" class="loading-state">
+              <a-spin size="large" />
+              <p>正在加载MIB树...</p>
             </div>
+            <a-tree
+              ref="treeRef"
+              v-else
+              :data="mibTree"
+              :selected-keys="selectedKeys"
+              v-model:expanded-keys="expandedKeys"
+              :show-line="true"
+              :block-node="true"
+              :virtual-list-props="{
+                height: 320,
+                threshold: 50,
+                itemKey: 'key',
+              }"
+              @select="handleSelect"
+              @expand="handleTreeExpand"
+            >
+              <template #title="{ label, oid }">
+                <div class="tree-node-content">
+                  <span class="tree-node-label">{{ label }}</span>
+                  <span class="tree-node-oid">{{ oid }}</span>
+                </div>
+              </template>
+            </a-tree>
           </div>
         </div>
 
@@ -484,7 +549,14 @@ getMib()
         <a-checkbox-group :options="mibTreeOptions" direction="vertical" v-model="mibFiles" />
         <div class="mib-tree-footer">
           <a-space>
-            <a-button type="primary" size="small" @click="closeMibTreeModal"> 确定 </a-button>
+            <a-button
+              type="primary"
+              size="small"
+              @click="confirmMibFiles"
+              :loading="mibFilesLoading"
+            >
+              确定
+            </a-button>
             <a-button size="small" @click="closeMibTreeModal">取消</a-button>
           </a-space>
         </div>
@@ -636,48 +708,93 @@ select:focus {
   gap: 12px;
 }
 
-.tree-container {
+.arco-tree-container {
   border-top: 1px solid #edf1f7;
   margin-top: 12px;
   max-height: 320px;
-  overflow-y: auto;
+  overflow: hidden;
 }
 
-.tree-row {
+.tree-node-content {
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 8px;
-  padding: 8px 12px;
+  width: 100%;
+  padding: 2px 0;
+}
+
+.tree-node-label {
+  flex: 1;
   font-size: 13px;
   color: #1f2937;
-  cursor: pointer;
-  transition: background 0.15s ease;
+  white-space: nowrap;
+  font-weight: 500;
 }
 
-.tree-row:nth-child(odd) {
-  background: #f9fafb;
+.tree-node-oid {
+  font-size: 12px;
+  color: #64748b;
+  white-space: nowrap;
+  background: #f1f5f9;
+  padding: 2px 6px;
+  border-radius: 4px;
+  font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
 }
 
-.tree-row:hover {
-  background: #e3f2fd;
+/* Arco Tree组件样式定制 */
+:deep(.arco-tree-node) {
+  padding: 4px 8px;
+  transition: all 0.2s ease;
+  border-radius: 6px;
+  margin: 2px 4px;
 }
 
-.tree-row.active {
+:deep(.arco-tree-node:hover) {
+  background: #f0f9ff;
+}
+
+:deep(.arco-tree-node-selected) {
   background: #dbeafe;
   color: #1d4ed8;
   font-weight: 600;
 }
 
-.tree-label {
-  flex: 1;
-  white-space: nowrap;
+:deep(.arco-tree-node-title) {
+  width: 100%;
 }
 
-.tree-oid {
-  font-size: 12px;
+:deep(.arco-tree-node-switcher) {
   color: #64748b;
-  white-space: nowrap;
+  transition: transform 0.2s ease;
+}
+
+:deep(.arco-tree-node-switcher:hover) {
+  color: #1d4ed8;
+}
+
+:deep(.arco-tree-node-indent-line) {
+  border-color: #e2e8f0;
+}
+
+:deep(.arco-virtual-list) {
+  border-radius: 8px;
+}
+
+.loading-state,
+.empty-tree-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  height: 320px;
+  gap: 16px;
+  color: #94a3b8;
+  font-size: 14px;
+}
+
+.empty-tree-state .refresh-button {
+  margin-top: 8px;
 }
 
 .detail-grid {
