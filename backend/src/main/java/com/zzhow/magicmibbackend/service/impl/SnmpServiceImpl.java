@@ -27,7 +27,7 @@ import java.io.IOException;
  *
  * @author ZZHow
  * create 2025/11/27
- * update 2025/11/29
+ * update 2025/12/2
  */
 @Slf4j
 @Service
@@ -60,7 +60,7 @@ public class SnmpServiceImpl implements SnmpService {
      */
     @Override
     public Result<String> get(SnmpGetDTO snmpGetDTO) {
-        return Result.success(this.performSnmpGet(AuthenticationRepository.address, AuthenticationRepository.port, snmpGetDTO.getOid(), AuthenticationRepository.readCommunity));
+        return this.performSnmpGet(AuthenticationRepository.address, AuthenticationRepository.port, snmpGetDTO.getOid(), AuthenticationRepository.readCommunity);
     }
 
     /**
@@ -71,7 +71,7 @@ public class SnmpServiceImpl implements SnmpService {
      */
     @Override
     public Result<String> getNext(SnmpGetDTO snmpGetDTO) {
-        return Result.success(this.performSnmpGetNext(AuthenticationRepository.address, AuthenticationRepository.port, snmpGetDTO.getOid(), AuthenticationRepository.readCommunity));
+        return this.performSnmpGetNext(AuthenticationRepository.address, AuthenticationRepository.port, snmpGetDTO.getOid(), AuthenticationRepository.readCommunity);
     }
 
     /**
@@ -83,7 +83,7 @@ public class SnmpServiceImpl implements SnmpService {
      * @param community 共同体名
      * @return 结果字符串
      */
-    public String performSnmpGet(String agentIp, Integer port, String oid, String community) {
+    public Result<String> performSnmpGet(String agentIp, Integer port, String oid, String community) {
         return performSnmp(agentIp, port, oid, community, SnmpOperation.GET);
     }
 
@@ -96,7 +96,7 @@ public class SnmpServiceImpl implements SnmpService {
      * @param community 共同体名
      * @return 下一条 OID 及其值
      */
-    public String performSnmpGetNext(String agentIp, Integer port, String oid, String community) {
+    public Result<String> performSnmpGetNext(String agentIp, Integer port, String oid, String community) {
         return performSnmp(agentIp, port, oid, community, SnmpOperation.GET_NEXT);
     }
 
@@ -110,7 +110,7 @@ public class SnmpServiceImpl implements SnmpService {
      * @param operation SNMP 操作类型
      * @return 结果字符串
      */
-    public String performSnmp(String agentIp, Integer port, String oid, String community, SnmpOperation operation) {
+    public Result<String> performSnmp(String agentIp, Integer port, String oid, String community, SnmpOperation operation) {
         // 创建目标地址 (默认端口 161)
         Address targetAddress = new UdpAddress(agentIp + "/" + port);
 
@@ -138,17 +138,22 @@ public class SnmpServiceImpl implements SnmpService {
             if (responseEvent != null && responseEvent.getResponse() != null) {
                 // 解析响应
                 VariableBinding vb = responseEvent.getResponse().get(0);
-                if (operation == SnmpOperation.GET) {
-                    return vb.getVariable().toString();
+                if (responseEvent.getResponse().getErrorIndex() == 0) {
+                    if (operation == SnmpOperation.GET) {
+                        return Result.success(vb.getVariable().toString());
+                    } else {
+                        return Result.success(vb.getOid().toDottedString() + " = " + vb.getVariable().toString());
+                    }
+                } else {
+                    return Result.error(responseEvent.getResponse().getErrorStatusText());
                 }
-                return vb.getOid().toDottedString() + " = " + vb.getVariable().toString();
             } else {
-                log.error("No Response from target device");
-                return "No Response from target device.";
+                log.error("连接超时");
+                return Result.error("连接超时");
             }
         } catch (IOException e) {
             log.error("SNMP communication error: {}", e.getMessage());
-            return "SNMP communication error.";
+            return Result.error("系统错误");
         }
     }
 }
