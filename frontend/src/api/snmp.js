@@ -13,3 +13,14 @@ export const snmpGetNextService = (oid) => {
     params: { oid },
   })
 }
+
+// 发起 SNMP GetBulk 请求接口
+export const snmpGetBulkService = (nonRepeaters, maxRepetitions, oids) => {
+  return request.get('/api/snmp/get-bulk', {
+    params: {
+      nonRepeaters,
+      maxRepetitions,
+      oids,
+    },
+  })
+}

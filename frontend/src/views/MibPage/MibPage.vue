@@ -95,18 +95,18 @@ const hasResults = computed(() => resultRows.value.length > 0)
 const selectNode = (node, parentNode = null) => {
   if (!node) return
   selectedNode.value = node
-  
+
   // 判断是否需要补 .0
   let oid = node.oid || ''
   const isLeafNode = !node.children || node.children.length === 0
   const parentLabelHasEntry = parentNode?.label?.includes('Entry') ?? false
   const isObjectType = node.syntax === 'OBJECT-TYPE'
-  
+
   // 如果父节点label不包含Entry,并且自己是叶子节点,并且syntax为OBJECT-TYPE,则补.0
   if (isLeafNode && !parentLabelHasEntry && isObjectType && oid && !oid.endsWith('.0')) {
     oid = oid + '.0'
   }
-  
+
   oidInput.value = oid
   selectedKeys.value = node.key ? [node.key] : [] // 同步更新选中状态
 }
@@ -219,6 +219,7 @@ const snmpGet = async () => {
   }
 
   try {
+    Message.clear()
     const res = await snmpGetService(currentOid)
     if (res.data.code === 0) {
       const snmpData = res.data.data
@@ -247,6 +248,7 @@ const snmpGetNext = async () => {
   const currentEndpoint = `${advancedForm.value.address}:${advancedForm.value.port}`
 
   try {
+    Message.clear()
     const res = await snmpGetNextService(currentOid)
     if (res.data.code === 0) {
       // GetNext返回格式: "真正的OID = 对应的value"

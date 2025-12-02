@@ -1,31 +1,18 @@
 <script setup>
-import { ref, nextTick, onMounted } from 'vue'
-import { snmpGetService, snmpGetNextService } from '@/api/snmp.js'
+import { ref, nextTick, onMounted, computed } from 'vue'
+import { snmpGetService, snmpGetNextService, snmpGetBulkService } from '@/api/snmp.js'
+import { useTerminalStore } from '@/stores'
 
-// 终端输出历史
-const terminalOutput = ref([
-  {
-    type: 'system',
-    content: 'MagicMIB Terminal\nDesigned by ZZHow',
-    timestamp: new Date(),
-  },
-  {
-    type: 'system',
-    content: '支持的命令: get, getnext, getbulk',
-    timestamp: new Date(),
-  },
-  {
-    type: 'system',
-    content: '输入 help 查看帮助信息',
-    timestamp: new Date(),
-  },
-])
+// 使用终端 store
+const terminalStore = useTerminalStore()
 
-// 当前输入
-const currentInput = ref('')
+// 使用 computed 双向绑定 store 中的 currentInput
+const currentInput = computed({
+  get: () => terminalStore.currentInput,
+  set: (value) => terminalStore.updateCurrentInput(value),
+})
 
-// 命令历史
-const commandHistory = ref([])
+// 历史命令导航索引
 const historyIndex = ref(-1)
 
 // 终端容器引用
@@ -43,11 +30,7 @@ const scrollToBottom = () => {
 
 // 添加输出
 const addOutput = (type, content) => {
-  terminalOutput.value.push({
-    type,
-    content,
-    timestamp: new Date(),
-  })
+  terminalStore.addOutput(type, content)
   scrollToBottom()
 }
 
@@ -115,12 +98,9 @@ const handleGetBulkCommand = async (parts) => {
 
   addOutput('info', `正在执行: GetBulk n=${n}, m=${m}, OIDs=[${oids.join(', ')}]`)
 
-  try {
-    const result = await snmpGetBulk(n, m, oids)
-    addOutput('success', `成功: ${JSON.stringify(result, null, 2)}`)
-  } catch (error) {
-    addOutput('error', `错误: ${error.message || '执行失败'}`)
-  }
+  const { code, data } = await snmpGetBulk(n, m, oids)
+  if (code === 0) addOutput('success', '成功：\n' + data)
+  else addOutput('error', '错误：' + data)
 }
 
 // 显示帮助信息
@@ -149,23 +129,20 @@ const showHelp = () => {
 
 // 显示历史命令
 const showHistory = () => {
-  if (commandHistory.value.length === 0) {
+  if (terminalStore.commandHistory.length === 0) {
     addOutput('info', '暂无命令历史')
     return
   }
 
   addOutput('info', '=== 命令历史 ===')
-  commandHistory.value.forEach((cmd, index) => {
+  terminalStore.commandHistory.forEach((cmd, index) => {
     addOutput('info', `${index + 1}. ${cmd}`)
   })
 }
 
 // 清空终端
 const clearTerminal = () => {
-  terminalOutput.value = []
-  addOutput('system', 'MagicMIB Terminal\nDesigned by ZZHow')
-  addOutput('system', '支持的命令: get, getnext, getbulk')
-  addOutput('system', '输入 help 查看帮助信息')
+  terminalStore.clearTerminal()
 }
 
 // 执行命令
@@ -177,7 +154,7 @@ const executeCommand = () => {
   addOutput('command', `$ ${input}`)
 
   // 添加到历史
-  commandHistory.value.push(input)
+  terminalStore.addCommandHistory(input)
   historyIndex.value = -1
 
   // 解析命令
@@ -215,27 +192,29 @@ const executeCommand = () => {
   }
 
   // 清空输入
-  currentInput.value = ''
+  terminalStore.clearCurrentInput()
 }
 
 // 历史命令导航
 const navigateHistory = (direction) => {
-  if (commandHistory.value.length === 0) return
+  if (terminalStore.commandHistory.length === 0) return
 
   if (direction === 'up') {
-    if (historyIndex.value < commandHistory.value.length - 1) {
+    if (historyIndex.value < terminalStore.commandHistory.length - 1) {
       historyIndex.value++
-      currentInput.value =
-        commandHistory.value[commandHistory.value.length - 1 - historyIndex.value]
+      terminalStore.updateCurrentInput(
+        terminalStore.commandHistory[terminalStore.commandHistory.length - 1 - historyIndex.value],
+      )
     }
   } else if (direction === 'down') {
     if (historyIndex.value > 0) {
       historyIndex.value--
-      currentInput.value =
-        commandHistory.value[commandHistory.value.length - 1 - historyIndex.value]
+      terminalStore.updateCurrentInput(
+        terminalStore.commandHistory[terminalStore.commandHistory.length - 1 - historyIndex.value],
+      )
     } else if (historyIndex.value === 0) {
       historyIndex.value = -1
-      currentInput.value = ''
+      terminalStore.clearCurrentInput()
     }
   }
 }
@@ -293,8 +272,14 @@ const snmpGetNext = async (oid) => {
  * @returns {Promise} API 响应数据
  */
 const snmpGetBulk = async (nonRepeaters, maxRepetitions, oids) => {
-  // TODO: 实现后端 API 调用
-  return '开发中'
+  try {
+    const res = await snmpGetBulkService(nonRepeaters, maxRepetitions, oids)
+    if (res.data.code === 0) return { code: 0, data: res.data.data }
+    else return { code: 1, data: res.data.message }
+    // eslint-disable-next-line no-unused-vars
+  } catch (e) {
+    return { code: 1, data: '系统错误' }
+  }
 }
 
 // ==================== 生命周期 ====================
@@ -333,7 +318,7 @@ const focusInput = () => {
       <div ref="terminalContainer" class="terminal-content">
         <!-- 输出历史 -->
         <div
-          v-for="(output, index) in terminalOutput"
+          v-for="(output, index) in terminalStore.terminalOutput"
           :key="index"
           class="terminal-line"
           :class="`output-${output.type}`"

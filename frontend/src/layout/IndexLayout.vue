@@ -7,7 +7,7 @@ const route = useRoute()
 
 const menuItems = [
   { key: 'home', label: 'MIB浏览器', path: '/mib' },
-  { key: 'terminal', label: '终端', path: '/terminal' },
+  { key: 'terminal', label: 'SNMP终端', path: '/terminal' },
 ]
 
 const activeKey = ref(menuItems[0].key)
