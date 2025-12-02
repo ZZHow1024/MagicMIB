@@ -38,7 +38,23 @@ const selectedNode = ref(null)
 
 // 处理树节点选择
 const handleSelect = (selectedKeysArray, { node }) => {
-  selectNode(node)
+  // 查找父节点
+  const parentNode = findParentNode(mibTree.value, node)
+  selectNode(node, parentNode)
+}
+
+// 查找父节点的辅助函数
+const findParentNode = (nodes, targetNode, parent = null) => {
+  for (const node of nodes) {
+    if (node.key === targetNode.key) {
+      return parent
+    }
+    if (node.children?.length) {
+      const found = findParentNode(node.children, targetNode, node)
+      if (found !== null) return found
+    }
+  }
+  return null
 }
 
 // 默认展开的节点keys - 设置默认展开的节点
@@ -76,10 +92,22 @@ const resultRows = ref([])
 
 const hasResults = computed(() => resultRows.value.length > 0)
 
-const selectNode = (node) => {
+const selectNode = (node, parentNode = null) => {
   if (!node) return
   selectedNode.value = node
-  oidInput.value = node.oid || '' // 自动更新 OID 输入框为选中节点的 OID
+  
+  // 判断是否需要补 .0
+  let oid = node.oid || ''
+  const isLeafNode = !node.children || node.children.length === 0
+  const parentLabelHasEntry = parentNode?.label?.includes('Entry') ?? false
+  const isObjectType = node.syntax === 'OBJECT-TYPE'
+  
+  // 如果父节点label不包含Entry,并且自己是叶子节点,并且syntax为OBJECT-TYPE,则补.0
+  if (isLeafNode && !parentLabelHasEntry && isObjectType && oid && !oid.endsWith('.0')) {
+    oid = oid + '.0'
+  }
+  
+  oidInput.value = oid
   selectedKeys.value = node.key ? [node.key] : [] // 同步更新选中状态
 }
 
@@ -311,19 +339,19 @@ const getMib = async () => {
 
       // 如果没有选中节点且有数据，默认选择第一个叶子节点
       if (!selectedNode.value && mibTree.value && mibTree.value.length > 0) {
-        const findFirstLeaf = (nodes) => {
+        const findFirstLeaf = (nodes, parent = null) => {
           for (const node of nodes) {
             if (!node.children || node.children.length === 0) {
-              return node
+              return { node, parent }
             }
-            const leaf = findFirstLeaf(node.children)
+            const leaf = findFirstLeaf(node.children, node)
             if (leaf) return leaf
           }
           return null
         }
-        const firstLeaf = findFirstLeaf(mibTree.value)
-        if (firstLeaf) {
-          selectNode(firstLeaf)
+        const result = findFirstLeaf(mibTree.value)
+        if (result) {
+          selectNode(result.node, result.parent)
         }
       }
     } else {
