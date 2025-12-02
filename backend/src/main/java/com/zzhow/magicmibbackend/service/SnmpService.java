@@ -1,5 +1,6 @@
 package com.zzhow.magicmibbackend.service;
 
+import com.zzhow.magicmibbackend.pojo.dto.GetBulkDTO;
 import com.zzhow.magicmibbackend.pojo.dto.SnmpGetDTO;
 import com.zzhow.magicmibbackend.result.Result;
 
@@ -8,7 +9,7 @@ import com.zzhow.magicmibbackend.result.Result;
  *
  * @author ZZHow
  * create 2025/11/28
- * update 2025/11/28
+ * update 2025/12/2
  */
 public interface SnmpService {
     /**
@@ -26,4 +27,12 @@ public interface SnmpService {
      * @return 结果字符串
      */
     Result<String> getNext(SnmpGetDTO snmpGetDTO);
+
+    /**
+     * 执行 SNMP GetBulk 请求
+     *
+     * @param getBulkDTO GetBulk 请求信息传输模型
+     * @return 结果字符串
+     */
+    Result<String> getBulk(GetBulkDTO getBulkDTO);
 }

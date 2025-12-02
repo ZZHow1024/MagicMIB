@@ -1,5 +1,6 @@
 package com.zzhow.magicmibbackend.controller;
 
+import com.zzhow.magicmibbackend.pojo.dto.GetBulkDTO;
 import com.zzhow.magicmibbackend.pojo.dto.SnmpGetDTO;
 import com.zzhow.magicmibbackend.result.Result;
 import com.zzhow.magicmibbackend.service.SnmpService;
@@ -12,7 +13,7 @@ import org.springframework.web.bind.annotation.*;
  *
  * @author ZZHow
  * create 2025/11/28
- * update 2025/11/28
+ * update 2025/12/2
  */
 @Slf4j
 @RestController
@@ -45,5 +46,18 @@ public class SnmpController {
         log.info("发起 SNMP GetNext 请求：snmpGetDTO = {}", snmpGetDTO);
 
         return snmpService.getNext(snmpGetDTO);
+    }
+
+    /**
+     * 发起 SNMP GetBulk 请求
+     *
+     * @param getBulkDTO GetBulk 请求信息传输模型
+     * @return GetBulk 信息
+     */
+    @GetMapping("/get-bulk")
+    public Result<String> getBulk(GetBulkDTO getBulkDTO) {
+        log.info("发起 SNMP GetBulk 请求：getBulkDTO = {}", getBulkDTO);
+
+        return snmpService.getBulk(getBulkDTO);
     }
 }
