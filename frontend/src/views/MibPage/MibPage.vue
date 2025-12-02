@@ -4,6 +4,7 @@ import { getAuthenticationService, setAuthenticationService } from '@/api/authen
 import { Message } from '@arco-design/web-vue'
 import { snmpGetNextService, snmpGetService } from '@/api/snmp.js'
 import { getMibService, loadMibService } from '@/api/mib.js'
+import { useAuthenticationStore } from '@/stores'
 
 const oidInput = ref('1.3.6.1.2.1.1.1.0')
 const operations = ['Get', 'GetNext']
@@ -11,6 +12,9 @@ const selectedOperation = ref(operations[0])
 
 const isAdvancedModalOpen = ref(false)
 const isMibTreeModalOpen = ref(false)
+
+// 使用 Pinia store
+const authenticationStore = useAuthenticationStore()
 
 const advancedForm = ref({
   address: '127.0.0.1',
@@ -160,8 +164,13 @@ const clearResults = () => {
 const setAuthentication = async () => {
   try {
     const res = await setAuthenticationService(advancedForm.value)
-    if (res.data.code === 0) Message.success('配置成功')
-    else Message.warning(res.data.message)
+    if (res.data.code === 0) {
+      Message.success('配置成功')
+      // 配置成功后存储到 Pinia
+      authenticationStore.setAuthConfig(advancedForm.value)
+    } else {
+      Message.warning(res.data.message)
+    }
     // eslint-disable-next-line no-unused-vars
   } catch (e) {
     Message.error('系统错误')

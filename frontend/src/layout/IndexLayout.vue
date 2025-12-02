@@ -52,7 +52,11 @@ const handleMenuSelect = (key) => {
     </a-layout-header>
 
     <a-layout-content class="layout-content">
-      <router-view />
+      <router-view v-slot="{ Component }">
+        <keep-alive>
+          <component :is="Component" />
+        </keep-alive>
+      </router-view>
     </a-layout-content>
 
     <a-layout-footer class="layout-footer">
