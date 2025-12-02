@@ -73,12 +73,9 @@ const handleGetCommand = async (parts) => {
   const oid = parts[1]
   addOutput('info', `正在执行: Get ${oid}`)
 
-  try {
-    const result = await snmpGet(oid)
-    addOutput('success', `成功: ${JSON.stringify(result, null, 2)}`)
-  } catch (error) {
-    addOutput('error', `错误: ${error.message || '执行失败'}`)
-  }
+  const { code, data } = await snmpGet(oid)
+  if (code === 0) addOutput('success', '成功：' + data)
+  else addOutput('error', '错误：' + data)
 }
 
 // GetNext 命令处理
@@ -92,12 +89,9 @@ const handleGetNextCommand = async (parts) => {
   const oid = parts[1]
   addOutput('info', `正在执行: GetNext ${oid}`)
 
-  try {
-    const result = await snmpGetNext(oid)
-    addOutput('success', `成功: ${JSON.stringify(result, null, 2)}`)
-  } catch (error) {
-    addOutput('error', `错误: ${error.message || '执行失败'}`)
-  }
+  const { code, data } = await snmpGetNext(oid)
+  if (code === 0) addOutput('success', '成功：' + data)
+  else addOutput('error', '错误：' + data)
 }
 
 // GetBulk 命令处理
@@ -267,11 +261,11 @@ const handleKeyDown = (event) => {
 const snmpGet = async (oid) => {
   try {
     const res = await snmpGetService(oid)
-    if (res.data.code === 0) return res.data.data
-    else return res.data.messgae
+    if (res.data.code === 0) return { code: 0, data: res.data.data }
+    else return { code: 1, data: res.data.message }
     // eslint-disable-next-line no-unused-vars
   } catch (e) {
-    return '系统错误'
+    return { code: 1, data: '系统错误' }
   }
 }
 
@@ -283,11 +277,11 @@ const snmpGet = async (oid) => {
 const snmpGetNext = async (oid) => {
   try {
     const res = await snmpGetNextService(oid)
-    if (res.data.code === 0) return res.data.data
-    else return res.data.messgae
+    if (res.data.code === 0) return { code: 0, data: res.data.data }
+    else return { code: 1, data: res.data.message }
     // eslint-disable-next-line no-unused-vars
   } catch (e) {
-    return '系统错误'
+    return { code: 1, data: '系统错误' }
   }
 }
 
