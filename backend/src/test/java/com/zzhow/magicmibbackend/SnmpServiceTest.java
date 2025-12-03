@@ -1,6 +1,7 @@
 package com.zzhow.magicmibbackend;
 
 import com.zzhow.magicmibbackend.config.SnmpConfiguration;
+import com.zzhow.magicmibbackend.result.Result;
 import com.zzhow.magicmibbackend.service.impl.SnmpServiceImpl;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -15,7 +16,7 @@ import static org.junit.jupiter.api.Assertions.*;
  *
  * @author ZZHow
  * create 2025/11/27
- * update 2025/11/30
+ * update 2025/12/3
  */
 @SpringBootTest
 @Import(SnmpConfiguration.class)
@@ -33,8 +34,8 @@ class SnmpServiceTest {
     @DisplayName("测试成功的SNMP Get请求")
     void testSnmpGet() {
         try {
-            String result = snmpServiceImpl.performSnmpGet(TEST_AGENT_IP, TEST_AGENT_PORT, SYS_DESCR_OID, TEST_COMMUNITY);
-            System.out.println("成功获取 sysDescr：" + result);
+            Result<String> stringResult = snmpServiceImpl.performSnmpGet(TEST_AGENT_IP, TEST_AGENT_PORT, SYS_DESCR_OID, TEST_COMMUNITY);
+            System.out.println("成功获取 sysDescr：" + stringResult.getData());
         } catch (Exception e) {
             fail("SNMP Get通信失败，异常信息：" + e.getMessage());
         }
@@ -44,8 +45,8 @@ class SnmpServiceTest {
     @DisplayName("测试成功的SNMP GetNext请求")
     void testSnmpGetNext() {
         try {
-            String result = snmpServiceImpl.performSnmpGetNext(TEST_AGENT_IP, TEST_AGENT_PORT, SYS_DESCR_OID, TEST_COMMUNITY);
-            System.out.println("成功获取 sysDescr：" + result);
+            Result<String> stringResult = snmpServiceImpl.performSnmpGetNext(TEST_AGENT_IP, TEST_AGENT_PORT, SYS_DESCR_OID, TEST_COMMUNITY);
+            System.out.println("成功获取 sysDescr：" + stringResult.getData());
         } catch (Exception e) {
             fail("SNMP Get通信失败，异常信息：" + e.getMessage());
         }

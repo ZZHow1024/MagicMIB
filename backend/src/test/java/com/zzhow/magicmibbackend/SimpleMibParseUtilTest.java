@@ -16,7 +16,7 @@ import java.util.Map;
  *
  * @author ZZHow
  * create 2025/11/30
- * update 2025/11/30
+ * update 2025/12/3
  */
 @SpringBootTest
 public class SimpleMibParseUtilTest {
@@ -277,5 +277,97 @@ public class SimpleMibParseUtilTest {
         }
 
         return found;
+    }
+
+    @Test
+    @DisplayName("测试 access 和 status 解析功能")
+    public void testAccessAndStatusParsing() {
+        try {
+            // 加载一个包含多个 OBJECT-TYPE 定义的标准 MIB 文件
+            String[] mibNames = {"IF-MIB"};
+            List<MibNode> nodes = mibParseUtil.parseMibFiles(mibNames);
+
+            System.out.println("=== 测试 access 和 status 解析功能 ===");
+
+            // 递归检查节点，查找非默认的 access 和 status 值
+            findAndPrintNodesWithCustomAccessStatus(nodes.get(0), 0);
+
+            // 另外，也测试一些具体节点的 access 和 status 值
+            System.out.println("\n=== 具体节点 access 和 status 示例 ===");
+            printSpecificNodesExample(nodes.get(0), 0, 3);
+
+        } catch (Exception e) {
+            System.err.println("测试 access 和 status 解析时发生异常: " + e.getMessage());
+            e.printStackTrace();
+        }
+    }
+
+    /**
+     * 递归查找并打印具有自定义 access 和 status 的节点
+     */
+    private void findAndPrintNodesWithCustomAccessStatus(MibNode node, int depth) {
+        if (node == null) return;
+
+        // 检查是否有非默认的 access 或 status
+        boolean hasCustomAccess = !"not-accessible".equals(node.getAccess());
+        boolean hasCustomStatus = !"current".equals(node.getStatus());
+
+        if (hasCustomAccess || hasCustomStatus) {
+            StringBuilder indent = new StringBuilder();
+            for (int i = 0; i < depth; i++) {
+                indent.append("  ");
+            }
+
+            System.out.printf("%s%s (%s)%n", indent.toString(), node.getLabel(), node.getOid());
+            if (hasCustomAccess) {
+                System.out.printf("%s  Access: %s%n", indent.toString(), node.getAccess());
+            }
+            if (hasCustomStatus) {
+                System.out.printf("%s  Status: %s%n", indent.toString(), node.getStatus());
+            }
+        }
+
+        // 递归检查子节点
+        if (node.getChildren() != null) {
+            for (MibNode child : node.getChildren()) {
+                findAndPrintNodesWithCustomAccessStatus(child, depth + 1);
+            }
+        }
+    }
+
+    /**
+     * 打印一些具体节点的示例，展示 access 和 status 解析结果
+     */
+    private void printSpecificNodesExample(MibNode node, int depth, int maxDepth) {
+        if (node == null || depth > maxDepth) return;
+
+        // 只打印在 IF-MIB 中的实际节点（不是基础树结构）
+        boolean isActualMibNode = node.getMib() != null && "IF-MIB".equals(node.getMib()) &&
+                !node.getLabel().equals("mgmt") &&
+                node.getOid() != null && node.getOid().startsWith("1.3.6.1.2.1");
+
+        if (isActualMibNode) {
+            StringBuilder indent = new StringBuilder();
+            for (int i = 0; i < depth; i++) {
+                indent.append("  ");
+            }
+
+            System.out.printf("%s=== 节点: %s (%s) ===%n", indent.toString(), node.getLabel(), node.getOid());
+            System.out.printf("%sAccess: %s%n", indent.toString(), node.getAccess());
+            System.out.printf("%sStatus: %s%n", indent.toString(), node.getStatus());
+            System.out.printf("%sSyntax: %s%n", indent.toString(), node.getSyntax());
+            if (node.getDescription() != null && !node.getDescription().trim().isEmpty()) {
+                System.out.printf("%sDescription: %.80s%s%n", indent.toString(),
+                        node.getDescription(), node.getDescription().length() > 80 ? "..." : "");
+            }
+            System.out.println();
+        }
+
+        // 递归检查子节点
+        if (node.getChildren() != null) {
+            for (MibNode child : node.getChildren()) {
+                printSpecificNodesExample(child, depth + 1, maxDepth);
+            }
+        }
     }
 }

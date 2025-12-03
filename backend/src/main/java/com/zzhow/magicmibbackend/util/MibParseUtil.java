@@ -13,7 +13,7 @@ import java.util.*;
  *
  * @author ZZHow
  * create 2025/11/30
- * update 2025/11/30
+ * update 2025/12/3
  */
 @Slf4j
 @Component
@@ -246,8 +246,8 @@ public class MibParseUtil {
             // 获取符号类型
             String syntax = "";
             String description = "";
-            String access = "read-only";
-            String status = "current";
+            String access = "not-accessible"; // 默认访问权限
+            String status = "current"; // 默认状态
 
             if (symbol.getType() != null) {
                 syntax = symbol.getType().getName();
@@ -259,6 +259,32 @@ public class MibParseUtil {
             // 获取文本描述
             if (symbol.getText() != null) {
                 description = symbol.getText().trim();
+            }
+
+            // 尝试从 MIB 符号中获取 access 和 status 信息
+            // 对于 OBJECT-TYPE 宏，尝试获取 access 和 status
+            try {
+                // 获取 ACCESS 子句
+                String accessValue = getMacroClause(symbol, "ACCESS");
+                if (accessValue != null && !accessValue.trim().isEmpty()) {
+                    access = accessValue.toLowerCase().replace("_", "-");
+                    log.trace("解析得到 access: {} for symbol: {}", access, name);
+                }
+
+                // 获取 STATUS 子句
+                String statusValue = getMacroClause(symbol, "STATUS");
+                if (statusValue != null && !statusValue.trim().isEmpty()) {
+                    status = statusValue.toLowerCase().replace("_", "-");
+                    log.trace("解析得到 status: {} for symbol: {}", status, name);
+                }
+
+                // 如果从符号文本中没有获取到，尝试从符号的其他属性中获取
+                if (access.equals("not-accessible") && status.equals("current")) {
+                    log.debug("符号 {} 使用默认 access 和 status: access={}, status={}", name, access, status);
+                }
+            } catch (Exception e) {
+                log.debug("获取 access/status 信息失败: {}", e.getMessage());
+                // 使用默认值
             }
 
             // 创建节点（使用 OID 作为唯一标识）
@@ -279,6 +305,139 @@ public class MibParseUtil {
             log.warn("创建节点失败: {}", e.getMessage());
             return null;
         }
+    }
+
+    /**
+     * 从宏符号中获取指定子句的值
+     *
+     * @param symbol MIB 值符号
+     * @param clause 子句名称（如 "ACCESS", "STATUS"）
+     * @return 子句的值，如果未找到则返回 null
+     */
+    private String getMacroClause(MibValueSymbol symbol, String clause) {
+        try {
+            // 从符号的完整文本定义中解析子句
+            if (symbol.getText() != null) {
+                String text = symbol.getText();
+
+                // 根据子句类型调用相应的解析方法
+                if ("ACCESS".equalsIgnoreCase(clause)) {
+                    return extractAccessFromText(text);
+                }
+
+                if ("STATUS".equalsIgnoreCase(clause)) {
+                    return extractStatusFromText(text);
+                }
+            }
+
+            // 备用方法：尝试从符号的字符串表示中解析
+            String symbolString = symbol.toString();
+            if ("ACCESS".equalsIgnoreCase(clause)) {
+                return extractAccessFromText(symbolString);
+            }
+
+            if ("STATUS".equalsIgnoreCase(clause)) {
+                return extractStatusFromText(symbolString);
+            }
+
+            return null;
+        } catch (Exception e) {
+            log.debug("获取宏子句 {} 失败: {}", clause, e.getMessage());
+            return null;
+        }
+    }
+
+    /**
+     * 从文本中提取访问权限
+     * 支持 standard MIB ACCESS 子句的各种格式
+     */
+    private String extractAccessFromText(String text) {
+        // 定义所有可能的访问权限类型
+        String[] accessTypes = {
+                "read-only", "read-write", "write-only", "not-accessible",
+                "accessible-for-notify", "read-create"
+        };
+
+        // 首先尝试简单匹配
+        String lowerText = text.toLowerCase();
+        for (String access : accessTypes) {
+            if (lowerText.contains("access " + access) ||
+                    lowerText.contains("access{" + access) ||
+                    lowerText.contains(access + "}") ||
+                    lowerText.contains(access + ",") ||
+                    lowerText.contains(access + "\n") ||
+                    lowerText.contains(access + "\r")) {
+                return access;
+            }
+        }
+
+        // 使用正则表达式进行更精确的匹配
+        String[] patterns = {
+                "access\\s+\\{?([^}\\n\\r,;]+)\\}?",
+                "access\\s+([^\\n\\r,;]+)"
+        };
+
+        for (String pattern : patterns) {
+            java.util.regex.Pattern regex = java.util.regex.Pattern.compile(pattern, java.util.regex.Pattern.CASE_INSENSITIVE);
+            java.util.regex.Matcher matcher = regex.matcher(text);
+
+            if (matcher.find()) {
+                String value = matcher.group(1).trim().toLowerCase().replace("_", "-");
+                // 验证提取的值是否是有效的访问权限
+                for (String validAccess : accessTypes) {
+                    if (validAccess.equals(value)) {
+                        return value;
+                    }
+                }
+            }
+        }
+
+        return null;
+    }
+
+    /**
+     * 从文本中提取状态
+     * 支持 standard MIB STATUS 子句的各种格式
+     */
+    private String extractStatusFromText(String text) {
+        // 定义所有可能的状态类型
+        String[] statusTypes = {"current", "deprecated", "obsolete", "mandatory", "optional"};
+
+        // 首先尝试简单匹配
+        String lowerText = text.toLowerCase();
+        for (String status : statusTypes) {
+            if (lowerText.contains("status " + status) ||
+                    lowerText.contains("status{" + status) ||
+                    lowerText.contains(status + "}") ||
+                    lowerText.contains(status + ",") ||
+                    lowerText.contains(status + "\n") ||
+                    lowerText.contains(status + "\r")) {
+                return status;
+            }
+        }
+
+        // 使用正则表达式进行更精确的匹配
+        String[] patterns = {
+                "status\\s+\\{?([^}\\n\\r,;]+)\\}?",
+                "status\\s+([^\\n\\r,;]+)"
+        };
+
+        for (String pattern : patterns) {
+            java.util.regex.Pattern regex = java.util.regex.Pattern.compile(pattern, java.util.regex.Pattern.CASE_INSENSITIVE);
+            java.util.regex.Matcher matcher = regex.matcher(text);
+
+            if (matcher.find()) {
+                String value = matcher.group(1).trim().toLowerCase().replace("_", "-");
+                // 验证提取的值是否是有效的状态
+                for (String validStatus : statusTypes) {
+                    if (validStatus.equals(value)) {
+                        return value;
+                    }
+                }
+            }
+        }
+
+        return null;
     }
 
     /**
