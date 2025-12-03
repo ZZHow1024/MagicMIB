@@ -44,4 +44,12 @@ public interface SnmpService {
      * @return SNMP 结果视图（包含多条数据）
      */
     Result<SnmpResultVO> walk(SnmpGetDTO snmpGetDTO);
+
+    /**
+     * 执行 SNMP GetSubtree 操作（获取指定 OID 子树的所有数据）
+     *
+     * @param snmpGetDTO SNMP GetSubtree 请求信息传输模型
+     * @return SNMP 结果视图（包含多条数据）
+     */
+    Result<SnmpResultVO> getSubtree(SnmpGetDTO snmpGetDTO);
 }

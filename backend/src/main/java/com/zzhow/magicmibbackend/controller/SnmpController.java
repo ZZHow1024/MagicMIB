@@ -74,4 +74,17 @@ public class SnmpController {
 
         return snmpService.walk(snmpGetDTO);
     }
+
+    /**
+     * 发起 SNMP GetSubtree 请求（获取指定 OID 子树的所有数据）
+     *
+     * @param snmpGetDTO SNMP GetSubtree 请求信息传输模型
+     * @return SNMP 结果视图（包含多条数据）
+     */
+    @GetMapping("/get-subtree")
+    public Result<SnmpResultVO> getSubtree(SnmpGetDTO snmpGetDTO) {
+        log.info("发起 SNMP GetSubtree 请求：snmpGetDTO = {}", snmpGetDTO);
+
+        return snmpService.getSubtree(snmpGetDTO);
+    }
 }

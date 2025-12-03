@@ -241,6 +241,17 @@ public class SnmpServiceImpl implements SnmpService {
             return Result.error("SNMP Walk 操作失败: " + e.getMessage());
         }
     }
+
+    /**
+     * 执行 SNMP GetSubtree 操作（获取指定 OID 子树的所有数据）
+     *
+     * @param snmpGetDTO SNMP GetSubtree 请求信息传输模型
+     * @return SNMP 结果视图（包含多条数据）
+     */
+    @Override
+    public Result<SnmpResultVO> getSubtree(SnmpGetDTO snmpGetDTO) {
+        // GetSubtree 与 Walk 实现相同，都是遍历指定 OID 下的所有节点
+        return walk(snmpGetDTO);
     }
 
     /**
@@ -402,6 +413,27 @@ public class SnmpServiceImpl implements SnmpService {
             log.error("SNMP communication error: {}", e.getMessage());
             return Result.error("系统错误");
         }
+    }
+
+    /**
+     * 创建 SnmpDataVO 对象，从 MIB 信息中填充 name、access、description
+     *
+     * @param oid   OID
+     * @param value 值
+     * @return 填充了 MIB 信息的 SnmpDataVO
+     */
+    private SnmpResultVO.SnmpDataVO createSnmpDataVO(String oid, String value) {
+        // 从 MIB 中查找节点信息
+        MibNode mibNode = mibParseUtil.findNodeByOid(oid);
+        
+        return SnmpResultVO.SnmpDataVO.builder()
+                .name(mibNode != null ? mibNode.getLabel() : "")
+                .oid(oid)
+                .value(value)
+                .type(getDataTypeFromValue(value))
+                .access(mibNode != null ? mibNode.getAccess() : "unknown")
+                .description(mibNode != null && mibNode.getDescription() != null ? mibNode.getDescription() : "")
+                .build();
     }
 
     /**
