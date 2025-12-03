@@ -183,8 +183,64 @@ public class SnmpServiceImpl implements SnmpService {
         }
     }
 
+    /**
+     * 执行 SNMP Walk 操作
+     *
+     * @param snmpGetDTO SNMP Walk 请求信息传输模型
+     * @return SNMP 结果视图（包含多条数据）
      */
     @Override
+    public Result<SnmpResultVO> walk(SnmpGetDTO snmpGetDTO) {
+        long startTime = System.currentTimeMillis();
+        java.util.List<SnmpResultVO.SnmpDataVO> dataList = new java.util.ArrayList<>();
+        String currentOid = snmpGetDTO.getOid();
+        
+        try {
+            // 限制最大步行次数，避免无限循环
+            int maxWalks = 1000;
+            int walkCount = 0;
+            
+            while (walkCount < maxWalks) {
+                Result<String> result = this.performSnmpGetNext(AuthenticationRepository.address, AuthenticationRepository.port, currentOid, AuthenticationRepository.readCommunity);
+                
+                if (result.getCode() != 0) {
+                    break;
+                }
+                
+                String response = result.getData();
+                String[] parts = response.split(" = ", 2);
+                String oid = parts.length > 0 ? parts[0] : "";
+                String value = parts.length > 1 ? parts[1] : "";
+                
+                // 检查是否超出范围
+                if (!oid.startsWith(snmpGetDTO.getOid())) {
+                    break;
+                }
+                
+                SnmpResultVO.SnmpDataVO dataVO = createSnmpDataVO(oid, value);
+                
+                dataList.add(dataVO);
+                currentOid = oid;
+                walkCount++;
+            }
+            
+            long executionTime = System.currentTimeMillis() - startTime;
+            SnmpResultVO resultVO = SnmpResultVO.builder()
+                    .operation("WALK")
+                    .address(AuthenticationRepository.address)
+                    .port(AuthenticationRepository.port)
+                    .data(dataList)
+                    .success(true)
+                    .executionTime(executionTime)
+                    .build();
+            
+            return Result.success(resultVO);
+            
+        } catch (Exception e) {
+            long executionTime = System.currentTimeMillis() - startTime;
+            return Result.error("SNMP Walk 操作失败: " + e.getMessage());
+        }
+    }
     }
 
     /**

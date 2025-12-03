@@ -32,6 +32,7 @@ public class SnmpController {
     @GetMapping("/get")
     public Result<SnmpResultVO> get(SnmpGetDTO snmpGetDTO) {
         log.info("发起 SNMP Get 请求：snmpGetDTO = {}", snmpGetDTO);
+
         return snmpService.get(snmpGetDTO);
     }
 
@@ -44,6 +45,7 @@ public class SnmpController {
     @GetMapping("/get-next")
     public Result<SnmpResultVO> getNext(SnmpGetDTO snmpGetDTO) {
         log.info("发起 SNMP GetNext 请求：snmpGetDTO = {}", snmpGetDTO);
+
         return snmpService.getNext(snmpGetDTO);
     }
 
@@ -56,6 +58,20 @@ public class SnmpController {
     @GetMapping("/get-bulk")
     public Result<SnmpResultVO> getBulk(GetBulkDTO getBulkDTO) {
         log.info("发起 SNMP GetBulk 请求：getBulkDTO = {}", getBulkDTO);
+
         return snmpService.getBulk(getBulkDTO);
+    }
+
+    /**
+     * 发起 SNMP Walk 请求
+     *
+     * @param snmpGetDTO SNMP Walk 请求信息传输模型
+     * @return SNMP 结果视图（包含多条数据）
+     */
+    @GetMapping("/walk")
+    public Result<SnmpResultVO> walk(SnmpGetDTO snmpGetDTO) {
+        log.info("发起 SNMP Walk 请求：snmpGetDTO = {}", snmpGetDTO);
+
+        return snmpService.walk(snmpGetDTO);
     }
 }

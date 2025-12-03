@@ -35,5 +35,13 @@ public interface SnmpService {
      * @param getBulkDTO GetBulk 请求信息传输模型
      * @return SNMP 结果视图（包含多条数据）
      */
-    Result<String> getBulk(GetBulkDTO getBulkDTO);
+    Result<SnmpResultVO> getBulk(GetBulkDTO getBulkDTO);
+
+    /**
+     * 执行 SNMP Walk 操作
+     *
+     * @param snmpGetDTO SNMP Walk 请求信息传输模型
+     * @return SNMP 结果视图（包含多条数据）
+     */
+    Result<SnmpResultVO> walk(SnmpGetDTO snmpGetDTO);
 }
