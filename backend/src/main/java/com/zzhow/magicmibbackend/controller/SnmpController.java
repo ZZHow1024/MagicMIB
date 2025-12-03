@@ -2,6 +2,7 @@ package com.zzhow.magicmibbackend.controller;
 
 import com.zzhow.magicmibbackend.pojo.dto.GetBulkDTO;
 import com.zzhow.magicmibbackend.pojo.dto.SnmpGetDTO;
+import com.zzhow.magicmibbackend.pojo.vo.SnmpResultVO;
 import com.zzhow.magicmibbackend.result.Result;
 import com.zzhow.magicmibbackend.service.SnmpService;
 import lombok.extern.slf4j.Slf4j;
@@ -13,7 +14,7 @@ import org.springframework.web.bind.annotation.*;
  *
  * @author ZZHow
  * create 2025/11/28
- * update 2025/12/2
+ * update 2025/12/3
  */
 @Slf4j
 @RestController
@@ -25,26 +26,24 @@ public class SnmpController {
     /**
      * 发起 SNMP Get 请求
      *
-     * @param snmpGetDTO SNMP Get/GetNext 请求信息传输模型
-     * @return Get 信息
+     * @param snmpGetDTO SNMP Get 请求信息传输模型
+     * @return SNMP 结果视图（包含单条数据）
      */
     @GetMapping("/get")
-    public Result<String> get(SnmpGetDTO snmpGetDTO) {
+    public Result<SnmpResultVO> get(SnmpGetDTO snmpGetDTO) {
         log.info("发起 SNMP Get 请求：snmpGetDTO = {}", snmpGetDTO);
-
         return snmpService.get(snmpGetDTO);
     }
 
     /**
      * 发起 SNMP GetNext 请求
      *
-     * @param snmpGetDTO SNMP Get/GetNext 请求信息传输模型
-     * @return GetNext 信息
+     * @param snmpGetDTO SNMP GetNext 请求信息传输模型
+     * @return SNMP 结果视图（包含单条数据）
      */
     @GetMapping("/get-next")
-    public Result<String> getNext(SnmpGetDTO snmpGetDTO) {
+    public Result<SnmpResultVO> getNext(SnmpGetDTO snmpGetDTO) {
         log.info("发起 SNMP GetNext 请求：snmpGetDTO = {}", snmpGetDTO);
-
         return snmpService.getNext(snmpGetDTO);
     }
 
@@ -52,12 +51,11 @@ public class SnmpController {
      * 发起 SNMP GetBulk 请求
      *
      * @param getBulkDTO GetBulk 请求信息传输模型
-     * @return GetBulk 信息
+     * @return SNMP 结果视图（包含多条数据）
      */
     @GetMapping("/get-bulk")
-    public Result<String> getBulk(GetBulkDTO getBulkDTO) {
+    public Result<SnmpResultVO> getBulk(GetBulkDTO getBulkDTO) {
         log.info("发起 SNMP GetBulk 请求：getBulkDTO = {}", getBulkDTO);
-
         return snmpService.getBulk(getBulkDTO);
     }
 }

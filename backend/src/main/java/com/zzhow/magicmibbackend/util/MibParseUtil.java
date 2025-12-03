@@ -507,4 +507,112 @@ public class MibParseUtil {
     public String[] getStandardMibs() {
         return STANDARD_MIBS.clone();
     }
+
+    // 缓存已解析的 MIB 树
+    private Map<String, MibNode> oidNodeCache = new HashMap<>();
+
+    /**
+     * 根据 OID 查找 MIB 节点信息
+     *
+     * @param oid 要查找的 OID
+     * @return MIB 节点信息，如果未找到则返回 null
+     */
+    public MibNode findNodeByOid(String oid) {
+        if (oid == null || oid.trim().isEmpty()) {
+            return null;
+        }
+        
+        // 如果缓存为空，先加载标准 MIB
+        if (oidNodeCache.isEmpty()) {
+            loadStandardMibs();
+        }
+        
+        // 直接查找
+        MibNode node = oidNodeCache.get(oid);
+        if (node != null) {
+            return node;
+        }
+        
+        // 如果没找到，尝试查找最接近的父节点
+        return findClosestParentNode(oid);
+    }
+
+    /**
+     * 加载标准 MIB 文件到缓存
+     */
+    private void loadStandardMibs() {
+        try {
+            log.info("开始加载标准 MIB 文件到缓存");
+            // 只加载一些关键的标准 MIB 文件，避免加载过多文件导致性能问题
+            String[] coreMibs = {
+                "SNMPv2-MIB",    // 基础 SNMPv2 MIB
+                "RFC1213-MIB",    // 基础 MIB-II
+                "IF-MIB",         // 接口 MIB
+                "IP-MIB",         // IP MIB
+                "TCP-MIB",        // TCP MIB
+                "UDP-MIB"         // UDP MIB
+            };
+            
+            List<MibNode> nodes = parseMibFiles(coreMibs);
+            
+            if (!nodes.isEmpty()) {
+                buildOidCache(nodes.get(0));
+                log.info("标准 MIB 文件缓存加载完成，缓存节点数: {}", oidNodeCache.size());
+            }
+        } catch (Exception e) {
+            log.warn("加载标准 MIB 文件到缓存失败: {}", e.getMessage());
+        }
+    }
+
+    /**
+     * 递归构建 OID 缓存
+     */
+    private void buildOidCache(MibNode node) {
+        if (node == null) return;
+        
+        // 将当前节点添加到缓存
+        if (node.getOid() != null && !node.getOid().isEmpty()) {
+            oidNodeCache.put(node.getOid(), node);
+        }
+        
+        // 递归处理子节点
+        if (node.getChildren() != null) {
+            for (MibNode child : node.getChildren()) {
+                buildOidCache(child);
+            }
+        }
+    }
+
+    /**
+     * 查找最接近的父节点
+     */
+    private MibNode findClosestParentNode(String oid) {
+        String[] parts = oid.split("\\.");
+        
+        // 从最长的可能 OID 开始查找
+        for (int i = parts.length; i >= 1; i--) {
+            StringBuilder parentOid = new StringBuilder();
+            for (int j = 0; j < i; j++) {
+                if (j > 0) {
+                    parentOid.append(".");
+                }
+                parentOid.append(parts[j]);
+            }
+            
+            MibNode node = oidNodeCache.get(parentOid.toString());
+            if (node != null) {
+                return node;
+            }
+        }
+        
+        return null;
+    }
+
+    /**
+     * 清空缓存
+     */
+    public void clearCache() {
+        oidNodeCache.clear();
+        log.info("MIB 节点缓存已清空");
+    }
 }

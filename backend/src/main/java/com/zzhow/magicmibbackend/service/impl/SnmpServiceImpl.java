@@ -2,9 +2,12 @@ package com.zzhow.magicmibbackend.service.impl;
 
 import com.zzhow.magicmibbackend.pojo.dto.GetBulkDTO;
 import com.zzhow.magicmibbackend.pojo.dto.SnmpGetDTO;
+import com.zzhow.magicmibbackend.pojo.vo.SnmpResultVO;
+import com.zzhow.magicmibbackend.pojo.entity.MibNode;
 import com.zzhow.magicmibbackend.repository.AuthenticationRepository;
 import com.zzhow.magicmibbackend.result.Result;
 import com.zzhow.magicmibbackend.service.SnmpService;
+import com.zzhow.magicmibbackend.util.MibParseUtil;
 import lombok.extern.slf4j.Slf4j;
 import org.snmp4j.CommunityTarget;
 import org.snmp4j.PDU;
@@ -28,7 +31,7 @@ import java.io.IOException;
  *
  * @author ZZHow
  * create 2025/11/27
- * update 2025/12/2
+ * update 2025/12/3
  */
 @Slf4j
 @Service
@@ -40,10 +43,12 @@ public class SnmpServiceImpl implements SnmpService {
     }
 
     private final Snmp snmp;
+    private final MibParseUtil mibParseUtil;
 
     @Autowired
-    public SnmpServiceImpl(Snmp snmp) {
+    public SnmpServiceImpl(Snmp snmp, MibParseUtil mibParseUtil) {
         this.snmp = snmp;
+        this.mibParseUtil = mibParseUtil;
     }
 
     @PreDestroy
@@ -58,33 +63,128 @@ public class SnmpServiceImpl implements SnmpService {
      * 执行 SNMP Get 请求
      *
      * @param snmpGetDTO SNMP Get 请求信息传输模型
-     * @return 结果字符串
+     * @return SNMP 结果视图（包含单条数据）
      */
     @Override
-    public Result<String> get(SnmpGetDTO snmpGetDTO) {
-        return this.performSnmpGet(AuthenticationRepository.address, AuthenticationRepository.port, snmpGetDTO.getOid(), AuthenticationRepository.readCommunity);
+    public Result<SnmpResultVO> get(SnmpGetDTO snmpGetDTO) {
+        long startTime = System.currentTimeMillis();
+        try {
+            Result<String> result = this.performSnmpGet(AuthenticationRepository.address, AuthenticationRepository.port, snmpGetDTO.getOid(), AuthenticationRepository.readCommunity);
+            long executionTime = System.currentTimeMillis() - startTime;
+            
+            if (result.getCode() == 0) {
+                SnmpResultVO.SnmpDataVO dataVO = createSnmpDataVO(snmpGetDTO.getOid(), result.getData());
+                
+                SnmpResultVO resultVO = SnmpResultVO.builder()
+                        .operation("GET")
+                        .address(AuthenticationRepository.address)
+                        .port(AuthenticationRepository.port)
+                        .data(java.util.Arrays.asList(dataVO))
+                        .success(true)
+                        .executionTime(executionTime)
+                        .build();
+                
+                return Result.success(resultVO);
+            } else {
+                return Result.error(result.getMessage());
+            }
+        } catch (Exception e) {
+            long executionTime = System.currentTimeMillis() - startTime;
+            return Result.error("SNMP Get 操作失败: " + e.getMessage());
+        }
     }
 
     /**
      * 执行 SNMP GetNext 请求
      *
-     * @param snmpGetDTO SNMP Get/GetNext 请求信息传输模型
-     * @return 结果字符串
+     * @param snmpGetDTO SNMP GetNext 请求信息传输模型
+     * @return SNMP 结果视图（包含单条数据）
      */
     @Override
-    public Result<String> getNext(SnmpGetDTO snmpGetDTO) {
-        return this.performSnmpGetNext(AuthenticationRepository.address, AuthenticationRepository.port, snmpGetDTO.getOid(), AuthenticationRepository.readCommunity);
+    public Result<SnmpResultVO> getNext(SnmpGetDTO snmpGetDTO) {
+        long startTime = System.currentTimeMillis();
+        try {
+            Result<String> result = this.performSnmpGetNext(AuthenticationRepository.address, AuthenticationRepository.port, snmpGetDTO.getOid(), AuthenticationRepository.readCommunity);
+            long executionTime = System.currentTimeMillis() - startTime;
+            
+            if (result.getCode() == 0) {
+                String response = result.getData();
+                // 解析 "oid = value" 格式
+                String[] parts = response.split(" = ", 2);
+                String oid = parts.length > 0 ? parts[0] : snmpGetDTO.getOid();
+                String value = parts.length > 1 ? parts[1] : "";
+                
+                SnmpResultVO.SnmpDataVO dataVO = createSnmpDataVO(oid, value);
+                
+                SnmpResultVO resultVO = SnmpResultVO.builder()
+                        .operation("GETNEXT")
+                        .address(AuthenticationRepository.address)
+                        .port(AuthenticationRepository.port)
+                        .data(java.util.Arrays.asList(dataVO))
+                        .success(true)
+                        .executionTime(executionTime)
+                        .build();
+                
+                return Result.success(resultVO);
+            } else {
+                return Result.error(result.getMessage());
+            }
+        } catch (Exception e) {
+            long executionTime = System.currentTimeMillis() - startTime;
+            return Result.error("SNMP GetNext 操作失败: " + e.getMessage());
+        }
     }
 
     /**
      * 执行 SNMP GetBulk 请求
      *
      * @param getBulkDTO GetBulk 请求信息传输模型
-     * @return 结果字符串
+     * @return SNMP 结果视图（包含多条数据）
      */
     @Override
-    public Result<String> getBulk(GetBulkDTO getBulkDTO) {
-        return this.performSnmpGetBulk(AuthenticationRepository.address, AuthenticationRepository.port, getBulkDTO.getOids(), getBulkDTO.getNonRepeaters(), getBulkDTO.getMaxRepetitions(), AuthenticationRepository.readCommunity);
+    public Result<SnmpResultVO> getBulk(GetBulkDTO getBulkDTO) {
+        long startTime = System.currentTimeMillis();
+        try {
+            Result<String> result = this.performSnmpGetBulk(AuthenticationRepository.address, AuthenticationRepository.port, getBulkDTO.getOids(), getBulkDTO.getNonRepeaters(), getBulkDTO.getMaxRepetitions(), AuthenticationRepository.readCommunity);
+            long executionTime = System.currentTimeMillis() - startTime;
+            
+            if (result.getCode() == 0) {
+                String[] lines = result.getData().split("\n");
+                java.util.List<SnmpResultVO.SnmpDataVO> dataList = new java.util.ArrayList<>();
+                
+                for (String line : lines) {
+                    if (line.trim().isEmpty()) continue;
+                    
+                    String[] parts = line.split(" = ", 2);
+                    String oid = parts.length > 0 ? parts[0] : "";
+                    String value = parts.length > 1 ? parts[1] : "";
+                    
+                    SnmpResultVO.SnmpDataVO dataVO = createSnmpDataVO(oid, value);
+                    
+                    dataList.add(dataVO);
+                }
+                
+                SnmpResultVO resultVO = SnmpResultVO.builder()
+                        .operation("GETBULK")
+                        .address(AuthenticationRepository.address)
+                        .port(AuthenticationRepository.port)
+                        .data(dataList)
+                        .success(true)
+                        .executionTime(executionTime)
+                        .build();
+                
+                return Result.success(resultVO);
+            } else {
+                return Result.error(result.getMessage());
+            }
+        } catch (Exception e) {
+            long executionTime = System.currentTimeMillis() - startTime;
+            return Result.error("SNMP GetBulk 操作失败: " + e.getMessage());
+        }
+    }
+
+     */
+    @Override
     }
 
     /**
@@ -246,5 +346,60 @@ public class SnmpServiceImpl implements SnmpService {
             log.error("SNMP communication error: {}", e.getMessage());
             return Result.error("系统错误");
         }
+    }
+
+    /**
+     * 根据值判断数据类型
+     *
+     * @param value SNMP 值
+     * @return 数据类型字符串
+     */
+    private String getDataTypeFromValue(String value) {
+        if (value == null || value.trim().isEmpty()) {
+            return "NULL";
+        }
+        
+        // 检查是否为数字
+        try {
+            Integer.parseInt(value);
+            return "INTEGER";
+        } catch (NumberFormatException e) {
+            // 不是整数
+        }
+        
+        try {
+            Long.parseLong(value);
+            return "COUNTER64";
+        } catch (NumberFormatException e) {
+            // 不是长整数
+        }
+        
+        // 检查是否为时间戳类型
+        if (value.matches("\\d+ days, \\d{2}:\\d{2}:\\d{2}.\\d{2}")) {
+            return "TIMETICKS";
+        }
+        
+        // 检查是否为十六进制字符串
+        if (value.startsWith("0x") || value.matches("[0-9A-Fa-f]{2}(:[0-9A-Fa-f]{2})*")) {
+            return "HEX-STRING";
+        }
+        
+        // 检查是否为 IP 地址
+        if (value.matches("\\d{1,3}\\.\\d{1,3}\\.\\d{1,3}\\.\\d{1,3}")) {
+            return "IPADDRESS";
+        }
+        
+        // 检查是否为 OID
+        if (value.matches("\\d+(\\.\\d+)*")) {
+            return "OBJECTID";
+        }
+        
+        // 检查是否为枚举值（常见 SNMP 枚举）
+        if (value.matches("(up|down|testing|unknown|true|false|enabled|disabled|on|off)")) {
+            return "ENUM";
+        }
+        
+        // 默认为字符串
+        return "OCTETSTRING";
     }
 }
