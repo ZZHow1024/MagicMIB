@@ -170,105 +170,16 @@ const handleGetBulkConfirm = (bulkData) => {
   // 处理GetBulk结果数据
   const results = []
 
-  if (Array.isArray(bulkData.result)) {
-    // 如果结果是数组格式
-    bulkData.result.forEach((item, index) => {
-      let nodeName = `GetBulk[${index}]`
-      const findNodeByOid = (nodes, targetOid) => {
-        for (const node of nodes) {
-          if (node.oid === targetOid) {
-            return node.label
-          }
-          if (node.children?.length) {
-            const found = findNodeByOid(node.children, targetOid)
-            if (found) return found
-          }
-        }
-        return null
-      }
-      const oid = item.oid || bulkData.oids[index] || ''
-      const foundName = findNodeByOid(mibTree.value, oid)
-      if (foundName) {
-        nodeName = `GetBulk[${index}] - ${foundName}`
-      }
-
+  if (bulkData.result && bulkData.result.data) {
+    // 使用新的后端返回格式
+    bulkData.result.data.forEach((item, index) => {
       const newResult = {
         id: `bulk-${Date.now()}-${index}`,
-        name: nodeName,
-        oid: oid,
+        name: item.name || `GetBulk[${index}]`,
+        oid: item.oid,
         value: item.value || '',
         type: item.type || 'OCTET STRING',
-        endpoint: `${advancedForm.value.address}:${advancedForm.value.port}`,
-      }
-      results.push(newResult)
-    })
-  } else if (typeof bulkData.result === 'string') {
-    // 如果结果是字符串格式，类似GetNext的格式
-    const lines = bulkData.result.split('\n').filter((line) => line.trim())
-    lines.forEach((line, index) => {
-      const equalIndex = line.indexOf('=')
-      if (equalIndex !== -1) {
-        const oid = line.substring(0, equalIndex).trim()
-        const value = line.substring(equalIndex + 1).trim()
-
-        // 查找对应的名称
-        let nodeName = `GetBulk[${index}]`
-        const findNodeByOid = (nodes, targetOid) => {
-          for (const node of nodes) {
-            if (node.oid === targetOid) {
-              return node.label
-            }
-            if (node.children?.length) {
-              const found = findNodeByOid(node.children, targetOid)
-              if (found) return found
-            }
-          }
-          return null
-        }
-        const foundName = findNodeByOid(mibTree.value, oid)
-        if (foundName) {
-          nodeName = `GetBulk[${index}] - ${foundName}`
-        }
-
-        const newResult = {
-          id: `bulk-${Date.now()}-${index}`,
-          name: nodeName,
-          oid: oid,
-          value: value,
-          type: 'OCTET STRING',
-          endpoint: `${advancedForm.value.address}:${advancedForm.value.port}`,
-        }
-        results.push(newResult)
-      }
-    })
-  } else if (bulkData.oids && bulkData.oids.length > 0) {
-    // 如果只有OID列表但没有结果，创建空结果
-    bulkData.oids.forEach((oid, index) => {
-      let nodeName = `GetBulk[${index}]`
-      const findNodeByOid = (nodes, targetOid) => {
-        for (const node of nodes) {
-          if (node.oid === targetOid) {
-            return node.label
-          }
-          if (node.children?.length) {
-            const found = findNodeByOid(node.children, targetOid)
-            if (found) return found
-          }
-        }
-        return null
-      }
-      const foundName = findNodeByOid(mibTree.value, oid)
-      if (foundName) {
-        nodeName = `GetBulk[${index}] - ${foundName}`
-      }
-
-      const newResult = {
-        id: `bulk-${Date.now()}-${index}`,
-        name: nodeName,
-        oid: oid,
-        value: '',
-        type: 'OCTET STRING',
-        endpoint: `${advancedForm.value.address}:${advancedForm.value.port}`,
+        endpoint: `${bulkData.result.address}:${bulkData.result.port}`,
       }
       results.push(newResult)
     })
@@ -277,7 +188,7 @@ const handleGetBulkConfirm = (bulkData) => {
   // 添加到结果表格
   resultRows.value.push(...results)
 
-  Message.success(`GetBulk成功，获取了 ${bulkData.oids.length} 个OID的数据`)
+  Message.success(`GetBulk成功，获取了 ${results.length} 条数据`)
 }
 
 // 清空结果表格
@@ -321,51 +232,25 @@ getAuthentication()
 // 发起 SNMP Get 请求
 const snmpGet = async () => {
   const currentOid = oidInput.value
-  const currentEndpoint = `${advancedForm.value.address}:${advancedForm.value.port}`
-
-  // 根据输入的OID查找对应的节点名称
-  let nodeName = 'Unknown'
-  const findNodeByOid = (nodes, targetOid) => {
-    for (const node of nodes) {
-      if (node.oid === targetOid) {
-        return node.label
-      }
-      if (node.children?.length) {
-        const found = findNodeByOid(node.children, targetOid)
-        if (found) return found
-      }
-    }
-    return null
-  }
-
-  const foundName = findNodeByOid(mibTree.value, currentOid)
-  if (foundName) {
-    nodeName = foundName
-  } else {
-    // 如果找不到精确匹配，尝试查找父节点
-    const parentOid = currentOid.substring(0, currentOid.lastIndexOf('.'))
-    if (parentOid) {
-      const parentName = findNodeByOid(mibTree.value, parentOid)
-      if (parentName) {
-        nodeName = parentName
-      }
-    }
-  }
 
   try {
     Message.clear()
     const res = await snmpGetService(currentOid)
     if (res.data.code === 0) {
-      const snmpData = res.data.data
-      const newResult = {
-        id: `row-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
-        name: nodeName,
-        oid: currentOid,
-        value: snmpData || '',
-        type: snmpData.type || 'OCTET STRING',
-        endpoint: currentEndpoint,
+      const responseData = res.data.data
+      if (responseData.data && responseData.data.length > 0) {
+        responseData.data.forEach((item, index) => {
+          const newResult = {
+            id: `get-${Date.now()}-${index}`,
+            name: item.name || 'Unknown',
+            oid: item.oid,
+            value: item.value || '',
+            type: item.type || 'OCTET STRING',
+            endpoint: `${responseData.address}:${responseData.port}`,
+          }
+          resultRows.value.push(newResult)
+        })
       }
-      resultRows.value.push(newResult)
       Message.success('请求成功')
     } else {
       Message.warning(res.data.message)
@@ -379,75 +264,29 @@ const snmpGet = async () => {
 // 发起 SNMP GetNext 请求
 const snmpGetNext = async () => {
   const currentOid = oidInput.value
-  const currentEndpoint = `${advancedForm.value.address}:${advancedForm.value.port}`
 
   try {
     Message.clear()
     const res = await snmpGetNextService(currentOid)
     if (res.data.code === 0) {
-      // GetNext返回格式: "真正的OID = 对应的value"
-      const nextResult = res.data.data
-      if (nextResult && typeof nextResult === 'string') {
-        // 解析 "OID = value"
-        const equalIndex = nextResult.indexOf('=')
-        if (equalIndex !== -1) {
-          const nextOid = nextResult.substring(0, equalIndex).trim()
-          const nextValue = nextResult.substring(equalIndex + 1).trim()
-
-          // 查找MIB树中对应的节点名称
-          let nodeName = 'Unknown'
-          const findNodeByOid = (nodes, targetOid) => {
-            for (const node of nodes) {
-              if (node.oid === targetOid) {
-                return node.label
-              }
-              if (node.children?.length) {
-                const found = findNodeByOid(node.children, targetOid)
-                if (found) return found
-              }
-            }
-            return null
-          }
-          const foundName = findNodeByOid(mibTree.value, nextOid)
-          if (foundName) {
-            nodeName = foundName
-          } else {
-            // 如果找不到精确匹配，尝试查找父节点
-            const parentOid = nextOid.substring(0, nextOid.lastIndexOf('.'))
-            if (parentOid) {
-              const parentName = findNodeByOid(mibTree.value, parentOid)
-              if (parentName) {
-                nodeName = parentName
-              }
-            }
-          }
+      const responseData = res.data.data
+      if (responseData.data && responseData.data.length > 0) {
+        responseData.data.forEach((item, index) => {
           const newResult = {
-            id: `row-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
-            name: nodeName,
-            oid: nextOid,
-            value: nextValue,
-            type: 'OCTET STRING',
-            endpoint: currentEndpoint,
+            id: `next-${Date.now()}-${index}`,
+            name: item.name || 'Unknown',
+            oid: item.oid,
+            value: item.value || '',
+            type: item.type || 'OCTET STRING',
+            endpoint: `${responseData.address}:${responseData.port}`,
           }
           resultRows.value.push(newResult)
-
-          // 更新输入框的OID为GetNext返回的真实OID
-          oidInput.value = nextOid
-        } else {
-          // 如果没有等号，整个字符串作为OID，值为空
-          const newResult = {
-            id: `row-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
-            name: 'Unknown',
-            oid: nextResult.trim(),
-            value: '',
-            type: 'OCTET STRING',
-            endpoint: currentEndpoint,
+          
+          // 更新输入框的OID为最后一个返回的OID
+          if (index === responseData.data.length - 1) {
+            oidInput.value = item.oid
           }
-          resultRows.value.push(newResult)
-
-          // 更新输入框的OID
-          oidInput.value = nextResult.trim()
-        }
+        })
       }
       Message.success('请求成功')
     } else {
