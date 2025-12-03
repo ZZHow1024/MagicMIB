@@ -5,13 +5,15 @@ import { Message } from '@arco-design/web-vue'
 import { snmpGetNextService, snmpGetService } from '@/api/snmp.js'
 import { getMibService, loadMibService } from '@/api/mib.js'
 import { useAuthenticationStore } from '@/stores'
+import GetBulkModal from '@/components/GetBulkModal.vue'
 
 const oidInput = ref('1.3.6.1.2.1.1.1.0')
-const operations = ['Get', 'GetNext']
+const operations = ['Get', 'GetNext', 'GetBulk']
 const selectedOperation = ref(operations[0])
 
 const isAdvancedModalOpen = ref(false)
 const isMibTreeModalOpen = ref(false)
+const isGetBulkModalOpen = ref(false)
 
 // 使用 Pinia store
 const authenticationStore = useAuthenticationStore()
@@ -120,6 +122,7 @@ const handleGo = async () => {
   goLoading.value = true
   if (selectedOperation.value === operations[0]) await snmpGet()
   else if (selectedOperation.value === operations[1]) await snmpGetNext()
+  else if (selectedOperation.value === operations[2]) await handleGetBulk()
   goLoading.value = false
 }
 
@@ -153,6 +156,128 @@ const confirmMibFiles = async () => {
 
 const closeMibTreeModal = () => {
   isMibTreeModalOpen.value = false
+}
+
+// 处理GetBulk操作
+const handleGetBulk = () => {
+  isGetBulkModalOpen.value = true
+}
+
+// GetBulk确认处理
+const handleGetBulkConfirm = (bulkData) => {
+  console.log('GetBulk result:', bulkData)
+
+  // 处理GetBulk结果数据
+  const results = []
+
+  if (Array.isArray(bulkData.result)) {
+    // 如果结果是数组格式
+    bulkData.result.forEach((item, index) => {
+      let nodeName = `GetBulk[${index}]`
+      const findNodeByOid = (nodes, targetOid) => {
+        for (const node of nodes) {
+          if (node.oid === targetOid) {
+            return node.label
+          }
+          if (node.children?.length) {
+            const found = findNodeByOid(node.children, targetOid)
+            if (found) return found
+          }
+        }
+        return null
+      }
+      const oid = item.oid || bulkData.oids[index] || ''
+      const foundName = findNodeByOid(mibTree.value, oid)
+      if (foundName) {
+        nodeName = `GetBulk[${index}] - ${foundName}`
+      }
+
+      const newResult = {
+        id: `bulk-${Date.now()}-${index}`,
+        name: nodeName,
+        oid: oid,
+        value: item.value || '',
+        type: item.type || 'OCTET STRING',
+        endpoint: `${advancedForm.value.address}:${advancedForm.value.port}`,
+      }
+      results.push(newResult)
+    })
+  } else if (typeof bulkData.result === 'string') {
+    // 如果结果是字符串格式，类似GetNext的格式
+    const lines = bulkData.result.split('\n').filter((line) => line.trim())
+    lines.forEach((line, index) => {
+      const equalIndex = line.indexOf('=')
+      if (equalIndex !== -1) {
+        const oid = line.substring(0, equalIndex).trim()
+        const value = line.substring(equalIndex + 1).trim()
+
+        // 查找对应的名称
+        let nodeName = `GetBulk[${index}]`
+        const findNodeByOid = (nodes, targetOid) => {
+          for (const node of nodes) {
+            if (node.oid === targetOid) {
+              return node.label
+            }
+            if (node.children?.length) {
+              const found = findNodeByOid(node.children, targetOid)
+              if (found) return found
+            }
+          }
+          return null
+        }
+        const foundName = findNodeByOid(mibTree.value, oid)
+        if (foundName) {
+          nodeName = `GetBulk[${index}] - ${foundName}`
+        }
+
+        const newResult = {
+          id: `bulk-${Date.now()}-${index}`,
+          name: nodeName,
+          oid: oid,
+          value: value,
+          type: 'OCTET STRING',
+          endpoint: `${advancedForm.value.address}:${advancedForm.value.port}`,
+        }
+        results.push(newResult)
+      }
+    })
+  } else if (bulkData.oids && bulkData.oids.length > 0) {
+    // 如果只有OID列表但没有结果，创建空结果
+    bulkData.oids.forEach((oid, index) => {
+      let nodeName = `GetBulk[${index}]`
+      const findNodeByOid = (nodes, targetOid) => {
+        for (const node of nodes) {
+          if (node.oid === targetOid) {
+            return node.label
+          }
+          if (node.children?.length) {
+            const found = findNodeByOid(node.children, targetOid)
+            if (found) return found
+          }
+        }
+        return null
+      }
+      const foundName = findNodeByOid(mibTree.value, oid)
+      if (foundName) {
+        nodeName = `GetBulk[${index}] - ${foundName}`
+      }
+
+      const newResult = {
+        id: `bulk-${Date.now()}-${index}`,
+        name: nodeName,
+        oid: oid,
+        value: '',
+        type: 'OCTET STRING',
+        endpoint: `${advancedForm.value.address}:${advancedForm.value.port}`,
+      }
+      results.push(newResult)
+    })
+  }
+
+  // 添加到结果表格
+  resultRows.value.push(...results)
+
+  Message.success(`GetBulk成功，获取了 ${bulkData.oids.length} 个OID的数据`)
 }
 
 // 清空结果表格
@@ -559,7 +684,7 @@ const loadMib = async () => {
         <a-form-item field="snmpVersion" label="SNMP版本">
           <a-select v-model="advancedForm.snmpVersion">
             <a-option :value="1">1</a-option>
-            <a-option :value="2" disabled>2</a-option>
+            <a-option :value="2">2</a-option>
             <a-option :value="3" disabled>3</a-option>
           </a-select>
         </a-form-item>
@@ -605,6 +730,13 @@ const loadMib = async () => {
         </div>
       </div>
     </a-modal>
+
+    <!-- GetBulk弹窗 -->
+    <GetBulkModal
+      v-model:visible="isGetBulkModalOpen"
+      :mib-tree="mibTree"
+      @confirm="handleGetBulkConfirm"
+    />
   </div>
 </template>
 
