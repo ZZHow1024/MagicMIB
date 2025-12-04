@@ -31,7 +31,7 @@ import java.io.IOException;
  *
  * @author ZZHow
  * create 2025/11/27
- * update 2025/12/3
+ * update 2025/12/4
  */
 @Slf4j
 @Service
@@ -71,10 +71,10 @@ public class SnmpServiceImpl implements SnmpService {
         try {
             Result<String> result = this.performSnmpGet(AuthenticationRepository.address, AuthenticationRepository.port, snmpGetDTO.getOid(), AuthenticationRepository.readCommunity);
             long executionTime = System.currentTimeMillis() - startTime;
-            
+
             if (result.getCode() == 0) {
                 SnmpResultVO.SnmpDataVO dataVO = createSnmpDataVO(snmpGetDTO.getOid(), result.getData());
-                
+
                 SnmpResultVO resultVO = SnmpResultVO.builder()
                         .operation("GET")
                         .address(AuthenticationRepository.address)
@@ -83,7 +83,7 @@ public class SnmpServiceImpl implements SnmpService {
                         .success(true)
                         .executionTime(executionTime)
                         .build();
-                
+
                 return Result.success(resultVO);
             } else {
                 return Result.error(result.getMessage());
@@ -106,16 +106,16 @@ public class SnmpServiceImpl implements SnmpService {
         try {
             Result<String> result = this.performSnmpGetNext(AuthenticationRepository.address, AuthenticationRepository.port, snmpGetDTO.getOid(), AuthenticationRepository.readCommunity);
             long executionTime = System.currentTimeMillis() - startTime;
-            
+
             if (result.getCode() == 0) {
                 String response = result.getData();
                 // 解析 "oid = value" 格式
                 String[] parts = response.split(" = ", 2);
                 String oid = parts.length > 0 ? parts[0] : snmpGetDTO.getOid();
                 String value = parts.length > 1 ? parts[1] : "";
-                
+
                 SnmpResultVO.SnmpDataVO dataVO = createSnmpDataVO(oid, value);
-                
+
                 SnmpResultVO resultVO = SnmpResultVO.builder()
                         .operation("GETNEXT")
                         .address(AuthenticationRepository.address)
@@ -124,7 +124,7 @@ public class SnmpServiceImpl implements SnmpService {
                         .success(true)
                         .executionTime(executionTime)
                         .build();
-                
+
                 return Result.success(resultVO);
             } else {
                 return Result.error(result.getMessage());
@@ -147,23 +147,23 @@ public class SnmpServiceImpl implements SnmpService {
         try {
             Result<String> result = this.performSnmpGetBulk(AuthenticationRepository.address, AuthenticationRepository.port, getBulkDTO.getOids(), getBulkDTO.getNonRepeaters(), getBulkDTO.getMaxRepetitions(), AuthenticationRepository.readCommunity);
             long executionTime = System.currentTimeMillis() - startTime;
-            
+
             if (result.getCode() == 0) {
                 String[] lines = result.getData().split("\n");
                 java.util.List<SnmpResultVO.SnmpDataVO> dataList = new java.util.ArrayList<>();
-                
+
                 for (String line : lines) {
                     if (line.trim().isEmpty()) continue;
-                    
+
                     String[] parts = line.split(" = ", 2);
                     String oid = parts.length > 0 ? parts[0] : "";
                     String value = parts.length > 1 ? parts[1] : "";
-                    
+
                     SnmpResultVO.SnmpDataVO dataVO = createSnmpDataVO(oid, value);
-                    
+
                     dataList.add(dataVO);
                 }
-                
+
                 SnmpResultVO resultVO = SnmpResultVO.builder()
                         .operation("GETBULK")
                         .address(AuthenticationRepository.address)
@@ -172,7 +172,7 @@ public class SnmpServiceImpl implements SnmpService {
                         .success(true)
                         .executionTime(executionTime)
                         .build();
-                
+
                 return Result.success(resultVO);
             } else {
                 return Result.error(result.getMessage());
@@ -184,7 +184,7 @@ public class SnmpServiceImpl implements SnmpService {
     }
 
     /**
-     * 执行 SNMP Walk 操作
+     * 执行 SNMP Walk 操作（遍历所有结点，不限 OID 前缀）
      *
      * @param snmpGetDTO SNMP Walk 请求信息传输模型
      * @return SNMP 结果视图（包含多条数据）
@@ -193,37 +193,41 @@ public class SnmpServiceImpl implements SnmpService {
     public Result<SnmpResultVO> walk(SnmpGetDTO snmpGetDTO) {
         long startTime = System.currentTimeMillis();
         java.util.List<SnmpResultVO.SnmpDataVO> dataList = new java.util.ArrayList<>();
-        String currentOid = snmpGetDTO.getOid();
-        
+        String startOid = snmpGetDTO.getOid();
+        String currentOid = startOid;
+
         try {
             // 限制最大步行次数，避免无限循环
-            int maxWalks = 1000;
+            int maxWalks = 10000;
             int walkCount = 0;
-            
+
             while (walkCount < maxWalks) {
                 Result<String> result = this.performSnmpGetNext(AuthenticationRepository.address, AuthenticationRepository.port, currentOid, AuthenticationRepository.readCommunity);
-                
+
                 if (result.getCode() != 0) {
+                    log.info("SNMP Walk 结束，原因: GetNext 失败 - {}", result.getMessage());
                     break;
                 }
-                
+
                 String response = result.getData();
-                String[] parts = response.split(" = ", 2);
-                String oid = parts.length > 0 ? parts[0] : "";
-                String value = parts.length > 1 ? parts[1] : "";
-                
-                // 检查是否超出范围
-                if (!oid.startsWith(snmpGetDTO.getOid())) {
+                if (response == null || response.trim().isEmpty()) {
+                    log.info("SNMP Walk 结束，原因: 空响应");
                     break;
                 }
-                
-                SnmpResultVO.SnmpDataVO dataVO = createSnmpDataVO(oid, value);
-                
+
+                String[] parts = response.split(" = ", 2);
+                String nextOid = parts.length > 0 ? parts[0] : "";
+                String value = parts.length > 1 ? parts[1] : "";
+
+                // 添加到结果列表（Walk不限制OID前缀，获取所有结点）
+                SnmpResultVO.SnmpDataVO dataVO = createSnmpDataVO(nextOid, value);
                 dataList.add(dataVO);
-                currentOid = oid;
+
+                // 更新当前 OID
+                currentOid = nextOid;
                 walkCount++;
             }
-            
+
             long executionTime = System.currentTimeMillis() - startTime;
             SnmpResultVO resultVO = SnmpResultVO.builder()
                     .operation("WALK")
@@ -233,11 +237,15 @@ public class SnmpServiceImpl implements SnmpService {
                     .success(true)
                     .executionTime(executionTime)
                     .build();
-            
+
+            log.info("SNMP Walk 完成，起始 OID: {}, 获取数据条数: {}, 耗时: {}ms",
+                    startOid, dataList.size(), executionTime);
+
             return Result.success(resultVO);
-            
+
         } catch (Exception e) {
             long executionTime = System.currentTimeMillis() - startTime;
+            log.error("SNMP Walk 操作异常: {}", e.getMessage(), e);
             return Result.error("SNMP Walk 操作失败: " + e.getMessage());
         }
     }
@@ -425,7 +433,7 @@ public class SnmpServiceImpl implements SnmpService {
     private SnmpResultVO.SnmpDataVO createSnmpDataVO(String oid, String value) {
         // 从 MIB 中查找节点信息
         MibNode mibNode = mibParseUtil.findNodeByOid(oid);
-        
+
         return SnmpResultVO.SnmpDataVO.builder()
                 .name(mibNode != null ? mibNode.getLabel() : "")
                 .oid(oid)
@@ -446,7 +454,7 @@ public class SnmpServiceImpl implements SnmpService {
         if (value == null || value.trim().isEmpty()) {
             return "NULL";
         }
-        
+
         // 检查是否为数字
         try {
             Integer.parseInt(value);
@@ -454,39 +462,39 @@ public class SnmpServiceImpl implements SnmpService {
         } catch (NumberFormatException e) {
             // 不是整数
         }
-        
+
         try {
             Long.parseLong(value);
             return "COUNTER64";
         } catch (NumberFormatException e) {
             // 不是长整数
         }
-        
+
         // 检查是否为时间戳类型
         if (value.matches("\\d+ days, \\d{2}:\\d{2}:\\d{2}.\\d{2}")) {
             return "TIMETICKS";
         }
-        
+
         // 检查是否为十六进制字符串
         if (value.startsWith("0x") || value.matches("[0-9A-Fa-f]{2}(:[0-9A-Fa-f]{2})*")) {
             return "HEX-STRING";
         }
-        
+
         // 检查是否为 IP 地址
         if (value.matches("\\d{1,3}\\.\\d{1,3}\\.\\d{1,3}\\.\\d{1,3}")) {
             return "IPADDRESS";
         }
-        
+
         // 检查是否为 OID
         if (value.matches("\\d+(\\.\\d+)*")) {
             return "OBJECTID";
         }
-        
+
         // 检查是否为枚举值（常见 SNMP 枚举）
         if (value.matches("(up|down|testing|unknown|true|false|enabled|disabled|on|off)")) {
             return "ENUM";
         }
-        
+
         // 默认为字符串
         return "OCTETSTRING";
     }
