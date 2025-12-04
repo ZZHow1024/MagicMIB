@@ -24,3 +24,10 @@ export const snmpGetBulkService = (nonRepeaters, maxRepetitions, oids) => {
     },
   })
 }
+
+// 发起 SNMP Walk 请求接口
+export const snmpWalkService = (oid) => {
+  return request.get('/api/snmp/walk', {
+    params: { oid },
+  })
+}

@@ -153,7 +153,6 @@ const handleConfirm = async () => {
         oids: selectedOids.value,
         result: res.data.data,
       })
-      Message.success('GetBulk请求成功')
       handleClose()
     } else {
       Message.warning(res.data.message)
