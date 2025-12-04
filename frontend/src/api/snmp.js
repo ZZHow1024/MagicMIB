@@ -31,3 +31,10 @@ export const snmpWalkService = (oid) => {
     params: { oid },
   })
 }
+
+// 发起 SNMP GetSubtree 请求接口
+export const snmpGetSubtreeService = (oid) => {
+  return request.get('/api/snmp/get-subtree', {
+    params: { oid },
+  })
+}

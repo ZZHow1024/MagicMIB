@@ -2,14 +2,12 @@
 import { computed, ref } from 'vue'
 import { getAuthenticationService, setAuthenticationService } from '@/api/authentication.js'
 import { Message } from '@arco-design/web-vue'
-import { snmpGetNextService, snmpGetService } from '@/api/snmp.js'
 import { snmpGetNextService, snmpGetService, snmpWalkService, snmpGetSubtreeService } from '@/api/snmp.js'
 import { getMibService, loadMibService } from '@/api/mib.js'
 import { useAuthenticationStore } from '@/stores'
 import GetBulkModal from '@/components/GetBulkModal.vue'
 
 const oidInput = ref('1.3.6.1.2.1.1.1.0')
-const operations = ['Get', 'GetNext', 'GetBulk']
 const operations = ['Get', 'GetNext', 'GetBulk', 'Walk', 'GetSubtree']
 const selectedOperation = ref(operations[0])
 
@@ -126,6 +124,7 @@ const handleGo = async () => {
   else if (selectedOperation.value === operations[1]) await snmpGetNext()
   else if (selectedOperation.value === operations[2]) await handleGetBulk()
   else if (selectedOperation.value === operations[3]) await snmpWalk()
+  else if (selectedOperation.value === operations[4]) await snmpGetSubtree()
   goLoading.value = false
 }
 
@@ -332,6 +331,39 @@ const snmpWalk = async () => {
     Message.error('系统错误')
   }
 }
+
+// 发起 SNMP GetSubtree 请求
+const snmpGetSubtree = async () => {
+  const currentOid = oidInput.value
+
+  try {
+    Message.clear()
+    const res = await snmpGetSubtreeService(currentOid)
+    if (res.data.code === 0) {
+      const responseData = res.data.data
+      if (responseData.data && responseData.data.length > 0) {
+        responseData.data.forEach((item, index) => {
+          const newResult = {
+            id: `subtree-${Date.now()}-${index}`,
+            name: item.name || 'Unknown',
+            oid: item.oid,
+            value: item.value || '',
+            type: item.type || 'OCTET STRING',
+            endpoint: `${responseData.address}:${responseData.port}`,
+          }
+          resultRows.value.push(newResult)
+        })
+      }
+      Message.success(`GetSubtree成功，获取了 ${responseData.data?.length || 0} 条数据`)
+    } else {
+      Message.warning(res.data.message)
+    }
+    // eslint-disable-next-line no-unused-vars
+  } catch (e) {
+    Message.error('系统错误')
+  }
+}
+
 // 获取当前加载的 MIB 文件
 const getMib = async () => {
   mibLoading.value = true
