@@ -258,8 +258,70 @@ public class SnmpServiceImpl implements SnmpService {
      */
     @Override
     public Result<SnmpResultVO> getSubtree(SnmpGetDTO snmpGetDTO) {
-        // GetSubtree 与 Walk 实现相同，都是遍历指定 OID 下的所有节点
-        return walk(snmpGetDTO);
+        long startTime = System.currentTimeMillis();
+        java.util.List<SnmpResultVO.SnmpDataVO> dataList = new java.util.ArrayList<>();
+        String startOid = snmpGetDTO.getOid();
+        String currentOid = startOid;
+
+        try {
+            // 限制最大步行次数，避免无限循环
+            int maxWalks = 10000;
+            int walkCount = 0;
+
+            while (walkCount < maxWalks) {
+                Result<String> result = this.performSnmpGetNext(AuthenticationRepository.address, AuthenticationRepository.port, currentOid, AuthenticationRepository.readCommunity);
+                System.out.println("result = " + result);
+
+                if (result.getCode() != 0) {
+                    log.info("SNMP GetSubtree 结束，原因: GetNext 失败 - {}", result.getMessage());
+                    break;
+                }
+
+                String response = result.getData();
+                if (response == null || response.trim().isEmpty()) {
+                    log.info("SNMP GetSubtree 结束，原因: 空响应");
+                    break;
+                }
+
+                String[] parts = response.split(" = ", 2);
+                String nextOid = parts.length > 0 ? parts[0] : "";
+                String value = parts.length > 1 ? parts[1] : "";
+
+                // 检查是否超出范围（返回的 OID 必须以起始 OID 开头）
+                if (!nextOid.startsWith(startOid)) {
+                    log.info("SNMP GetSubtree 结束，原因: OID {} 超出范围 {}", nextOid, startOid);
+                    break;
+                }
+
+                // 添加到结果列表（GetSubtree只获取相同OID前缀的结点）
+                SnmpResultVO.SnmpDataVO dataVO = createSnmpDataVO(nextOid, value);
+                dataList.add(dataVO);
+
+                // 更新当前 OID
+                currentOid = nextOid;
+                walkCount++;
+            }
+
+            long executionTime = System.currentTimeMillis() - startTime;
+            SnmpResultVO resultVO = SnmpResultVO.builder()
+                    .operation("GETSUBTREE")
+                    .address(AuthenticationRepository.address)
+                    .port(AuthenticationRepository.port)
+                    .data(dataList)
+                    .success(true)
+                    .executionTime(executionTime)
+                    .build();
+
+            log.info("SNMP GetSubtree 完成，起始 OID: {}, 获取数据条数: {}, 耗时: {}ms",
+                    startOid, dataList.size(), executionTime);
+
+            return Result.success(resultVO);
+
+        } catch (Exception e) {
+            long executionTime = System.currentTimeMillis() - startTime;
+            log.error("SNMP GetSubtree 操作异常: {}", e.getMessage(), e);
+            return Result.error("SNMP GetSubtree 操作失败: " + e.getMessage());
+        }
     }
 
     /**
