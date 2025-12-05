@@ -1,6 +1,11 @@
 <script setup>
 import { ref, nextTick, onMounted, computed } from 'vue'
-import { snmpGetService, snmpGetNextService, snmpGetBulkService } from '@/api/snmp.js'
+import {
+  snmpGetService,
+  snmpGetNextService,
+  snmpGetBulkService,
+  snmpWalkService,
+} from '@/api/snmp.js'
 import { useTerminalStore } from '@/stores'
 
 // 使用终端 store
@@ -103,6 +108,22 @@ const handleGetBulkCommand = async (parts) => {
   else addOutput('error', '错误：' + data)
 }
 
+// Walk 命令处理
+const handleWalkCommand = async (parts) => {
+  if (parts.length < 2) {
+    addOutput('error', '错误: walk 命令需要指定 OID')
+    addOutput('info', '用法: walk [OID]')
+    return
+  }
+
+  const oid = parts[1]
+  addOutput('info', `正在执行: Walk ${oid}`)
+
+  const { code, data } = await snmpWalk(oid)
+  if (code === 0) addOutput('success', '成功：\n' + data)
+  else addOutput('error', '错误：' + data)
+}
+
 // 显示帮助信息
 const showHelp = () => {
   addOutput('info', '=== SNMP 终端命令帮助 ===')
@@ -120,6 +141,10 @@ const showHelp = () => {
   addOutput('info', '   n: non-repeaters (非重复变量数)')
   addOutput('info', '   m: max-repetitions (最大重复次数)')
   addOutput('info', '   示例: getbulk 0 10 1.3.6.1.2.1.2.2.1')
+  addOutput('info', '')
+  addOutput('info', '4. Walk 命令:')
+  addOutput('info', '   walk [OID]')
+  addOutput('info', '   示例: walk 1.3.6.1.2.1.1')
   addOutput('info', '')
   addOutput('info', '其他命令:')
   addOutput('info', '   clear  - 清空终端')
@@ -176,6 +201,9 @@ const executeCommand = () => {
       break
     case 'getbulk':
       handleGetBulkCommand(parts)
+      break
+    case 'walk':
+      handleWalkCommand(parts)
       break
     case 'help':
       showHelp()
@@ -274,12 +302,67 @@ const snmpGetNext = async (oid) => {
 const snmpGetBulk = async (nonRepeaters, maxRepetitions, oids) => {
   try {
     const res = await snmpGetBulkService(nonRepeaters, maxRepetitions, oids)
-    if (res.data.code === 0) return { code: 0, data: res.data.data }
-    else return { code: 1, data: res.data.message }
+    if (res.data.code === 0) {
+      return { code: 0, data: formatWalkResponse(res.data.data) }
+    } else {
+      return { code: 1, data: res.data.message }
+    }
     // eslint-disable-next-line no-unused-vars
   } catch (e) {
     return { code: 1, data: '系统错误' }
   }
+}
+
+/**
+ * SNMP Walk 请求
+ * @param {string} oid - 对象标识符
+ * @returns {Promise} API 响应数据
+ */
+const snmpWalk = async (oid) => {
+  try {
+    const res = await snmpWalkService(oid)
+    if (res.data.code === 0) {
+      return { code: 0, data: formatWalkResponse(res.data.data) }
+    } else {
+      return { code: 1, data: res.data.message }
+    }
+    // eslint-disable-next-line no-unused-vars
+  } catch (e) {
+    return { code: 1, data: '系统错误' }
+  }
+}
+
+/**
+ * 格式化 Walk/GetBulk 响应数据
+ * @param {Object} responseData - 响应数据对象
+ * @returns {string} 格式化后的字符串
+ */
+const formatWalkResponse = (responseData) => {
+  if (!responseData || !responseData.data || responseData.data.length === 0) {
+    return '未返回任何数据'
+  }
+
+  const lines = []
+  lines.push(`地址: ${responseData.address}:${responseData.port}`)
+  lines.push(`操作: ${responseData.operation}`)
+  lines.push(`执行时间: ${responseData.executionTime}ms`)
+  lines.push(`结果数量: ${responseData.data.length}`)
+  lines.push('---')
+
+  responseData.data.forEach((item, index) => {
+    lines.push(`[${index + 1}] ${item.name}`)
+    lines.push(`    OID:   ${item.oid}`)
+    lines.push(`    类型:  ${item.type}`)
+    lines.push(`    值:    ${item.value}`)
+    if (item.access) {
+      lines.push(`    权限:  ${item.access}`)
+    }
+    if (index < responseData.data.length - 1) {
+      lines.push('')
+    }
+  })
+
+  return lines.join('\n')
 }
 
 // ==================== 生命周期 ====================
