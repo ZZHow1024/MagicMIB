@@ -62,7 +62,7 @@ const handleGetCommand = async (parts) => {
   addOutput('info', `正在执行: Get ${oid}`)
 
   const { code, data } = await snmpGet(oid)
-  if (code === 0) addOutput('success', '成功：' + data)
+  if (code === 0) addOutput('success', `成功：\n${data}`)
   else addOutput('error', '错误：' + data)
 }
 
@@ -78,7 +78,7 @@ const handleGetNextCommand = async (parts) => {
   addOutput('info', `正在执行: GetNext ${oid}`)
 
   const { code, data } = await snmpGetNext(oid)
-  if (code === 0) addOutput('success', '成功：' + data)
+  if (code === 0) addOutput('success', `成功：\n${data}`)
   else addOutput('error', '错误：' + data)
 }
 
@@ -104,7 +104,7 @@ const handleGetBulkCommand = async (parts) => {
   addOutput('info', `正在执行: GetBulk n=${n}, m=${m}, OIDs=[${oids.join(', ')}]`)
 
   const { code, data } = await snmpGetBulk(n, m, oids)
-  if (code === 0) addOutput('success', '成功：\n' + data)
+  if (code === 0) addOutput('success', data)
   else addOutput('error', '错误：' + data)
 }
 
@@ -120,7 +120,7 @@ const handleWalkCommand = async (parts) => {
   addOutput('info', `正在执行: Walk ${oid}`)
 
   const { code, data } = await snmpWalk(oid)
-  if (code === 0) addOutput('success', '成功：\n' + data)
+  if (code === 0) addOutput('success', data)
   else addOutput('error', '错误：' + data)
 }
 
@@ -268,8 +268,11 @@ const handleKeyDown = (event) => {
 const snmpGet = async (oid) => {
   try {
     const res = await snmpGetService(oid)
-    if (res.data.code === 0) return { code: 0, data: res.data.data }
-    else return { code: 1, data: res.data.message }
+    if (res.data.code === 0) {
+      return { code: 0, data: formatSimpleResponse(res.data.data) }
+    } else {
+      return { code: 1, data: res.data.message }
+    }
     // eslint-disable-next-line no-unused-vars
   } catch (e) {
     return { code: 1, data: '系统错误' }
@@ -284,8 +287,11 @@ const snmpGet = async (oid) => {
 const snmpGetNext = async (oid) => {
   try {
     const res = await snmpGetNextService(oid)
-    if (res.data.code === 0) return { code: 0, data: res.data.data }
-    else return { code: 1, data: res.data.message }
+    if (res.data.code === 0) {
+      return { code: 0, data: formatSimpleResponse(res.data.data) }
+    } else {
+      return { code: 1, data: res.data.message }
+    }
     // eslint-disable-next-line no-unused-vars
   } catch (e) {
     return { code: 1, data: '系统错误' }
@@ -330,6 +336,34 @@ const snmpWalk = async (oid) => {
   } catch (e) {
     return { code: 1, data: '系统错误' }
   }
+}
+
+/**
+ * 格式化响应数据 (Get/GetNext)
+ * @param {Object} responseData - 响应数据对象
+ * @returns {string} 格式化后的字符串
+ */
+const formatSimpleResponse = (responseData) => {
+  if (!responseData || !responseData.data || responseData.data.length === 0) {
+    return '未返回任何数据'
+  }
+
+  const item = responseData.data[0]
+  const lines = []
+
+  lines.push(`地址: ${responseData.address}:${responseData.port}`)
+  lines.push(`操作: ${responseData.operation}`)
+  lines.push(`执行时间: ${responseData.executionTime}ms`)
+  lines.push('---')
+  lines.push(`名称:  ${item.name}`)
+  lines.push(`OID:   ${item.oid}`)
+  lines.push(`类型:  ${item.type}`)
+  lines.push(`值:    ${item.value}`)
+  if (item.access) {
+    lines.push(`权限:  ${item.access}`)
+  }
+
+  return lines.join('\n')
 }
 
 /**
