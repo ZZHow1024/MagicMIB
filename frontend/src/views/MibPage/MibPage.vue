@@ -6,14 +6,16 @@ import { snmpGetNextService, snmpGetService, snmpWalkService, snmpGetSubtreeServ
 import { getMibService, loadMibService } from '@/api/mib.js'
 import { useAuthenticationStore } from '@/stores'
 import GetBulkModal from '@/components/GetBulkModal.vue'
+import SetModal from '@/components/SetModal.vue'
 
 const oidInput = ref('1.3.6.1.2.1.1.1.0')
-const operations = ['Get', 'GetNext', 'GetBulk', 'Walk', 'GetSubtree']
+const operations = ['Get', 'GetNext', 'GetBulk', 'Walk', 'GetSubtree', 'Set']
 const selectedOperation = ref(operations[0])
 
 const isAdvancedModalOpen = ref(false)
 const isMibTreeModalOpen = ref(false)
 const isGetBulkModalOpen = ref(false)
+const isSetModalOpen = ref(false)
 
 // 使用 Pinia store
 const authenticationStore = useAuthenticationStore()
@@ -125,6 +127,7 @@ const handleGo = async () => {
   else if (selectedOperation.value === operations[2]) await handleGetBulk()
   else if (selectedOperation.value === operations[3]) await snmpWalk()
   else if (selectedOperation.value === operations[4]) await snmpGetSubtree()
+  else if (selectedOperation.value === operations[5]) await handleSet()
   goLoading.value = false
 }
 
@@ -191,6 +194,33 @@ const handleGetBulkConfirm = (bulkData) => {
   resultRows.value.push(...results)
 
   Message.success(`GetBulk成功，获取了 ${results.length} 条数据`)
+}
+
+// 处理Set操作
+const handleSet = () => {
+  isSetModalOpen.value = true
+}
+
+// Set确认处理
+const handleSetConfirm = (setData) => {
+  console.log('Set result:', setData)
+
+  // 使用后端返回的结果数据
+  const responseData = setData.result
+  
+  if (responseData.data && responseData.data.length > 0) {
+    responseData.data.forEach((item, index) => {
+      const newResult = {
+        id: `set-${Date.now()}-${index}`,
+        name: item.name || 'Unknown',
+        oid: item.oid,
+        value: item.value || '',
+        type: item.type || 'OCTET STRING',
+        endpoint: `${responseData.address}:${responseData.port}`,
+      }
+      resultRows.value.push(newResult)
+    })
+  }
 }
 
 // 清空结果表格
@@ -641,6 +671,13 @@ const loadMib = async () => {
       v-model:visible="isGetBulkModalOpen"
       :mib-tree="mibTree"
       @confirm="handleGetBulkConfirm"
+    />
+
+    <!-- Set弹窗 -->
+    <SetModal
+      v-model:visible="isSetModalOpen"
+      :initial-oid="oidInput"
+      @confirm="handleSetConfirm"
     />
   </div>
 </template>

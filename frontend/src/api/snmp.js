@@ -38,3 +38,12 @@ export const snmpGetSubtreeService = (oid) => {
     params: { oid },
   })
 }
+
+// 发起 SNMP Set 请求接口
+export const snmpSetService = (oid, value, type) => {
+  return request.post('/api/snmp/set', {
+    oid,
+    value,
+    type,
+  })
+}
