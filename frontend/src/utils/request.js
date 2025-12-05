@@ -1,7 +1,6 @@
 import axios from 'axios'
 import JSONBIGINT from 'json-bigint'
-
-const baseURL = 'http://localhost:8080'
+import { baseURL } from '@/api/backendAddress.js'
 
 const request = axios.create({
   baseURL: baseURL,
