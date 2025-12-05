@@ -2,6 +2,7 @@ package com.zzhow.magicmibbackend.service.impl;
 
 import com.zzhow.magicmibbackend.pojo.dto.GetBulkDTO;
 import com.zzhow.magicmibbackend.pojo.dto.SnmpGetDTO;
+import com.zzhow.magicmibbackend.pojo.dto.SnmpSetDTO;
 import com.zzhow.magicmibbackend.pojo.vo.SnmpResultVO;
 import com.zzhow.magicmibbackend.pojo.entity.MibNode;
 import com.zzhow.magicmibbackend.repository.AuthenticationRepository;
@@ -14,11 +15,7 @@ import org.snmp4j.PDU;
 import org.snmp4j.Snmp;
 import org.snmp4j.event.ResponseEvent;
 import org.snmp4j.mp.SnmpConstants;
-import org.snmp4j.smi.Address;
-import org.snmp4j.smi.OID;
-import org.snmp4j.smi.OctetString;
-import org.snmp4j.smi.UdpAddress;
-import org.snmp4j.smi.VariableBinding;
+import org.snmp4j.smi.*;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
@@ -31,7 +28,7 @@ import java.io.IOException;
  *
  * @author ZZHow
  * create 2025/11/27
- * update 2025/12/4
+ * update 2025/12/5
  */
 @Slf4j
 @Service
@@ -39,7 +36,8 @@ public class SnmpServiceImpl implements SnmpService {
     public enum SnmpOperation {
         GET,
         GET_NEXT,
-        GET_BULK
+        GET_BULK,
+        SET
     }
 
     private final Snmp snmp;
@@ -251,6 +249,41 @@ public class SnmpServiceImpl implements SnmpService {
     }
 
     /**
+     * 执行 SNMP Set 请求
+     *
+     * @param snmpSetDTO SNMP Set 请求信息传输模型
+     * @return SNMP 结果视图（包含单条数据）
+     */
+    @Override
+    public Result<SnmpResultVO> set(SnmpSetDTO snmpSetDTO) {
+        long startTime = System.currentTimeMillis();
+        try {
+            Result<String> result = this.performSnmpSet(AuthenticationRepository.address, AuthenticationRepository.port, snmpSetDTO.getOid(), snmpSetDTO.getValue(), snmpSetDTO.getType(), AuthenticationRepository.writeCommunity);
+            long executionTime = System.currentTimeMillis() - startTime;
+
+            if (result.getCode() == 0) {
+                SnmpResultVO.SnmpDataVO dataVO = createSnmpDataVO(snmpSetDTO.getOid(), result.getData());
+
+                SnmpResultVO resultVO = SnmpResultVO.builder()
+                        .operation("SET")
+                        .address(AuthenticationRepository.address)
+                        .port(AuthenticationRepository.port)
+                        .data(java.util.Arrays.asList(dataVO))
+                        .success(true)
+                        .executionTime(executionTime)
+                        .build();
+
+                return Result.success(resultVO);
+            } else {
+                return Result.error(result.getMessage());
+            }
+        } catch (Exception e) {
+            long executionTime = System.currentTimeMillis() - startTime;
+            return Result.error("SNMP Set 操作失败: " + e.getMessage());
+        }
+    }
+
+    /**
      * 执行 SNMP GetSubtree 操作（获取指定 OID 子树的所有数据）
      *
      * @param snmpGetDTO SNMP GetSubtree 请求信息传输模型
@@ -270,7 +303,6 @@ public class SnmpServiceImpl implements SnmpService {
 
             while (walkCount < maxWalks) {
                 Result<String> result = this.performSnmpGetNext(AuthenticationRepository.address, AuthenticationRepository.port, currentOid, AuthenticationRepository.readCommunity);
-                System.out.println("result = " + result);
 
                 if (result.getCode() != 0) {
                     log.info("SNMP GetSubtree 结束，原因: GetNext 失败 - {}", result.getMessage());
@@ -348,6 +380,102 @@ public class SnmpServiceImpl implements SnmpService {
      */
     public Result<String> performSnmpGetNext(String agentIp, Integer port, String oid, String community) {
         return performSnmp(agentIp, port, oid, community, SnmpOperation.GET_NEXT);
+    }
+
+    /**
+     * 执行 SNMP Set 请求
+     *
+     * @param agentIp   Agent IP
+     * @param port      Agent 端口号
+     * @param oid       目标 OID
+     * @param value     设置的值
+     * @param type      数据类型
+     * @param community 共同体名
+     * @return 设置结果
+     */
+    public Result<String> performSnmpSet(String agentIp, Integer port, String oid, String value, String type, String community) {
+        // 创建目标地址
+        Address targetAddress = new UdpAddress(agentIp + "/" + port);
+
+        // 配置目标
+        CommunityTarget target = new CommunityTarget();
+        target.setCommunity(new OctetString(community));
+        target.setAddress(targetAddress);
+        target.setRetries(2);
+        target.setTimeout(1500);
+        target.setVersion(SnmpConstants.version1);
+
+        // 创建 PDU
+        PDU pdu = new PDU();
+        pdu.setType(PDU.SET);
+
+        // 根据类型创建相应的 Variable
+        Variable variable;
+        try {
+            switch (type.toLowerCase()) {
+                case "i":  // INTEGER
+                    variable = new Integer32(Integer.parseInt(value));
+                    break;
+                case "s":  // OCTET STRING
+                    variable = new OctetString(value);
+                    break;
+                case "x":  // HEX-STRING
+                    variable = OctetString.fromHexString(value);
+                    break;
+                case "d":  // DECIMAL STRING
+                    variable = new OctetString(value);
+                    break;
+                case "a":  // IPADDRESS
+                    variable = new IpAddress(value);
+                    break;
+                case "o":  // OBJECTID
+                    variable = new OID(value);
+                    break;
+                case "t":  // TIMETICKS
+                    variable = new TimeTicks(Long.parseLong(value));
+                    break;
+                case "u":  // UNSIGNED32
+                    variable = new UnsignedInteger32(Long.parseLong(value));
+                    break;
+                case "c":  // COUNTER32
+                    variable = new Counter32(Long.parseLong(value));
+                    break;
+                case "g":  // GAUGE32
+                    variable = new Gauge32(Long.parseLong(value));
+                    break;
+                default:
+                    return Result.error("不支持的数据类型: " + type);
+            }
+        } catch (Exception e) {
+            log.error("解析设置值失败: type={}, value={}, error={}", type, value, e.getMessage());
+            return Result.error("解析设置值失败: " + e.getMessage());
+        }
+
+        // 添加变量绑定
+        pdu.add(new VariableBinding(new OID(oid), variable));
+
+        try {
+            // 发送请求
+            ResponseEvent responseEvent = snmp.send(pdu, target);
+
+            if (responseEvent != null && responseEvent.getResponse() != null) {
+                PDU response = responseEvent.getResponse();
+
+                if (response.getErrorIndex() == 0) {
+                    // 解析响应
+                    VariableBinding vb = response.get(0);
+                    return Result.success(vb.getVariable().toString());
+                } else {
+                    return Result.error(response.getErrorStatusText());
+                }
+            } else {
+                log.error("连接超时");
+                return Result.error("连接超时");
+            }
+        } catch (IOException e) {
+            log.error("SNMP communication error: {}", e.getMessage());
+            return Result.error("系统错误");
+        }
     }
 
     /**

@@ -2,6 +2,7 @@ package com.zzhow.magicmibbackend.service;
 
 import com.zzhow.magicmibbackend.pojo.dto.GetBulkDTO;
 import com.zzhow.magicmibbackend.pojo.dto.SnmpGetDTO;
+import com.zzhow.magicmibbackend.pojo.dto.SnmpSetDTO;
 import com.zzhow.magicmibbackend.pojo.vo.SnmpResultVO;
 import com.zzhow.magicmibbackend.result.Result;
 
@@ -10,7 +11,7 @@ import com.zzhow.magicmibbackend.result.Result;
  *
  * @author ZZHow
  * create 2025/11/28
- * update 2025/12/3
+ * update 2025/12/5
  */
 public interface SnmpService {
     /**
@@ -52,4 +53,12 @@ public interface SnmpService {
      * @return SNMP 结果视图（包含多条数据）
      */
     Result<SnmpResultVO> getSubtree(SnmpGetDTO snmpGetDTO);
+
+    /**
+     * 执行 SNMP Set 请求
+     *
+     * @param snmpSetDTO SNMP Set 请求信息传输模型
+     * @return SNMP 结果视图（包含单条数据）
+     */
+    Result<SnmpResultVO> set(SnmpSetDTO snmpSetDTO);
 }

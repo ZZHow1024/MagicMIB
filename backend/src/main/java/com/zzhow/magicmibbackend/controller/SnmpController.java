@@ -2,6 +2,7 @@ package com.zzhow.magicmibbackend.controller;
 
 import com.zzhow.magicmibbackend.pojo.dto.GetBulkDTO;
 import com.zzhow.magicmibbackend.pojo.dto.SnmpGetDTO;
+import com.zzhow.magicmibbackend.pojo.dto.SnmpSetDTO;
 import com.zzhow.magicmibbackend.pojo.vo.SnmpResultVO;
 import com.zzhow.magicmibbackend.result.Result;
 import com.zzhow.magicmibbackend.service.SnmpService;
@@ -14,7 +15,7 @@ import org.springframework.web.bind.annotation.*;
  *
  * @author ZZHow
  * create 2025/11/28
- * update 2025/12/3
+ * update 2025/12/5
  */
 @Slf4j
 @RestController
@@ -86,5 +87,18 @@ public class SnmpController {
         log.info("发起 SNMP GetSubtree 请求：snmpGetDTO = {}", snmpGetDTO);
 
         return snmpService.getSubtree(snmpGetDTO);
+    }
+
+    /**
+     * 发起 SNMP Set 请求
+     *
+     * @param snmpSetDTO SNMP Set 请求信息传输模型
+     * @return SNMP 结果视图（包含单条数据）
+     */
+    @PostMapping("/set")
+    public Result<SnmpResultVO> set(@RequestBody SnmpSetDTO snmpSetDTO) {
+        log.info("发起 SNMP Set 请求：snmpSetDTO = {}", snmpSetDTO);
+
+        return snmpService.set(snmpSetDTO);
     }
 }
