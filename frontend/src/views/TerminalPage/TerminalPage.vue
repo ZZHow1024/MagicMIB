@@ -5,6 +5,7 @@ import {
   snmpGetNextService,
   snmpGetBulkService,
   snmpWalkService,
+  snmpGetSubtreeService,
 } from '@/api/snmp.js'
 import { useTerminalStore } from '@/stores'
 
@@ -124,6 +125,22 @@ const handleWalkCommand = async (parts) => {
   else addOutput('error', '错误：' + data)
 }
 
+// GetSubtree 命令处理
+const handleGetSubtreeCommand = async (parts) => {
+  if (parts.length < 2) {
+    addOutput('error', '错误: getsubtree 命令需要指定 OID')
+    addOutput('info', '用法: getsubtree [OID]')
+    return
+  }
+
+  const oid = parts[1]
+  addOutput('info', `正在执行: GetSubtree ${oid}`)
+
+  const { code, data } = await snmpGetSubtree(oid)
+  if (code === 0) addOutput('success', data)
+  else addOutput('error', '错误：' + data)
+}
+
 // 显示帮助信息
 const showHelp = () => {
   addOutput('info', '=== SNMP 终端命令帮助 ===')
@@ -145,6 +162,10 @@ const showHelp = () => {
   addOutput('info', '4. Walk 命令:')
   addOutput('info', '   walk [OID]')
   addOutput('info', '   示例: walk 1.3.6.1.2.1.1')
+  addOutput('info', '')
+  addOutput('info', '5. GetSubtree 命令:')
+  addOutput('info', '   getsubtree [OID]')
+  addOutput('info', '   示例: getsubtree 1.3.6.1.2.1.1')
   addOutput('info', '')
   addOutput('info', '其他命令:')
   addOutput('info', '   clear  - 清空终端')
@@ -204,6 +225,9 @@ const executeCommand = () => {
       break
     case 'walk':
       handleWalkCommand(parts)
+      break
+    case 'getsubtree':
+      handleGetSubtreeCommand(parts)
       break
     case 'help':
       showHelp()
@@ -327,6 +351,25 @@ const snmpGetBulk = async (nonRepeaters, maxRepetitions, oids) => {
 const snmpWalk = async (oid) => {
   try {
     const res = await snmpWalkService(oid)
+    if (res.data.code === 0) {
+      return { code: 0, data: formatWalkResponse(res.data.data) }
+    } else {
+      return { code: 1, data: res.data.message }
+    }
+    // eslint-disable-next-line no-unused-vars
+  } catch (e) {
+    return { code: 1, data: '系统错误' }
+  }
+}
+
+/**
+ * SNMP GetSubtree 请求
+ * @param {string} oid - 对象标识符
+ * @returns {Promise} API 响应数据
+ */
+const snmpGetSubtree = async (oid) => {
+  try {
+    const res = await snmpGetSubtreeService(oid)
     if (res.data.code === 0) {
       return { code: 0, data: formatWalkResponse(res.data.data) }
     } else {
