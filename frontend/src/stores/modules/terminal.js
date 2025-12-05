@@ -11,7 +11,7 @@ export const useTerminalStore = defineStore('terminal', () => {
     },
     {
       type: 'system',
-      content: '支持的命令：get, getnext, getbulk, walk, getsubtree',
+      content: '支持的命令：get, getnext, getbulk, walk, getsubtree, set',
       timestamp: new Date(),
     },
     {
@@ -61,7 +61,7 @@ export const useTerminalStore = defineStore('terminal', () => {
       },
       {
         type: 'system',
-        content: '支持的命令：get, getnext, getbulk, walk, getsubtree',
+        content: '支持的命令：get, getnext, getbulk, walk, getsubtree, set',
         timestamp: new Date(),
       },
       {

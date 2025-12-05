@@ -6,6 +6,7 @@ import {
   snmpGetBulkService,
   snmpWalkService,
   snmpGetSubtreeService,
+  snmpSetService,
 } from '@/api/snmp.js'
 import { useTerminalStore } from '@/stores'
 
@@ -63,7 +64,7 @@ const handleGetCommand = async (parts) => {
   addOutput('info', `正在执行: Get ${oid}`)
 
   const { code, data } = await snmpGet(oid)
-  if (code === 0) addOutput('success', `成功：\n${data}`)
+  if (code === 0) addOutput('success', `成功\n${data}`)
   else addOutput('error', '错误：' + data)
 }
 
@@ -79,7 +80,7 @@ const handleGetNextCommand = async (parts) => {
   addOutput('info', `正在执行: GetNext ${oid}`)
 
   const { code, data } = await snmpGetNext(oid)
-  if (code === 0) addOutput('success', `成功：\n${data}`)
+  if (code === 0) addOutput('success', `成功\n${data}`)
   else addOutput('error', '错误：' + data)
 }
 
@@ -105,7 +106,7 @@ const handleGetBulkCommand = async (parts) => {
   addOutput('info', `正在执行: GetBulk n=${n}, m=${m}, OIDs=[${oids.join(', ')}]`)
 
   const { code, data } = await snmpGetBulk(n, m, oids)
-  if (code === 0) addOutput('success', data)
+  if (code === 0) addOutput('success', `成功\n${data}`)
   else addOutput('error', '错误：' + data)
 }
 
@@ -121,7 +122,7 @@ const handleWalkCommand = async (parts) => {
   addOutput('info', `正在执行: Walk ${oid}`)
 
   const { code, data } = await snmpWalk(oid)
-  if (code === 0) addOutput('success', data)
+  if (code === 0) addOutput('success', `成功\n${data}`)
   else addOutput('error', '错误：' + data)
 }
 
@@ -137,7 +138,41 @@ const handleGetSubtreeCommand = async (parts) => {
   addOutput('info', `正在执行: GetSubtree ${oid}`)
 
   const { code, data } = await snmpGetSubtree(oid)
-  if (code === 0) addOutput('success', data)
+  if (code === 0) addOutput('success', `成功\n${data}`)
+  else addOutput('error', '错误：' + data)
+}
+
+// Set 命令处理
+const handleSetCommand = async (parts) => {
+  if (parts.length < 4) {
+    addOutput('error', '错误: set 命令参数不足')
+    addOutput('info', '用法: set [OID] [类型] [值]')
+    addOutput('info', '  类型: i(INTEGER), s(OCTET STRING), x(HEX-STRING), d(DECIMAL),')
+    addOutput('info', '        a(IPADDRESS), o(OBJECTID), t(TIMETICKS), u(UNSIGNED32),')
+    addOutput('info', '        c(COUNTER32), g(GAUGE32)')
+    addOutput('info', '  示例: set 1.3.6.1.2.1.1.4.0 s "admin@example.com"')
+    return
+  }
+
+  const oid = parts[1]
+  const type = parts[2].toLowerCase()
+  const value = parts
+    .slice(3)
+    .join(' ')
+    .replace(/^["']|["']$/g, '') // 移除引号
+
+  // 验证类型
+  const validTypes = ['i', 's', 'x', 'd', 'a', 'o', 't', 'u', 'c', 'g']
+  if (!validTypes.includes(type)) {
+    addOutput('error', `错误: 无效的数据类型 '${type}'`)
+    addOutput('info', '有效类型: ' + validTypes.join(', '))
+    return
+  }
+
+  addOutput('info', `正在执行: Set ${oid} = ${value} (类型: ${type})`)
+
+  const { code, data } = await snmpSet(oid, value, type)
+  if (code === 0) addOutput('success', `成功\n${data}`)
   else addOutput('error', '错误：' + data)
 }
 
@@ -166,6 +201,13 @@ const showHelp = () => {
   addOutput('info', '5. GetSubtree 命令:')
   addOutput('info', '   getsubtree [OID]')
   addOutput('info', '   示例: getsubtree 1.3.6.1.2.1.1')
+  addOutput('info', '')
+  addOutput('info', '6. Set 命令:')
+  addOutput('info', '   set [OID] [类型] [值]')
+  addOutput('info', '   类型: i(INTEGER), s(OCTET STRING), x(HEX-STRING), d(DECIMAL),')
+  addOutput('info', '         a(IPADDRESS), o(OBJECTID), t(TIMETICKS), u(UNSIGNED32),')
+  addOutput('info', '         c(COUNTER32), g(GAUGE32)')
+  addOutput('info', '   示例: set 1.3.6.1.2.1.1.4.0 s "admin@example.com"')
   addOutput('info', '')
   addOutput('info', '其他命令:')
   addOutput('info', '   clear  - 清空终端')
@@ -228,6 +270,9 @@ const executeCommand = () => {
       break
     case 'getsubtree':
       handleGetSubtreeCommand(parts)
+      break
+    case 'set':
+      handleSetCommand(parts)
       break
     case 'help':
       showHelp()
@@ -372,6 +417,27 @@ const snmpGetSubtree = async (oid) => {
     const res = await snmpGetSubtreeService(oid)
     if (res.data.code === 0) {
       return { code: 0, data: formatWalkResponse(res.data.data) }
+    } else {
+      return { code: 1, data: res.data.message }
+    }
+    // eslint-disable-next-line no-unused-vars
+  } catch (e) {
+    return { code: 1, data: '系统错误' }
+  }
+}
+
+/**
+ * SNMP Set 请求
+ * @param {string} oid - 对象标识符
+ * @param {string} value - 要设置的值
+ * @param {string} type - 数据类型
+ * @returns {Promise} API 响应数据
+ */
+const snmpSet = async (oid, value, type) => {
+  try {
+    const res = await snmpSetService(oid, value, type)
+    if (res.data.code === 0) {
+      return { code: 0, data: formatSimpleResponse(res.data.data) }
     } else {
       return { code: 1, data: res.data.message }
     }
