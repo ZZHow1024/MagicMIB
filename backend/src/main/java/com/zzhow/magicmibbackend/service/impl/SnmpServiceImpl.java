@@ -142,41 +142,86 @@ public class SnmpServiceImpl implements SnmpService {
     @Override
     public Result<SnmpResultVO> getBulk(GetBulkDTO getBulkDTO) {
         long startTime = System.currentTimeMillis();
+        java.util.List<SnmpResultVO.SnmpDataVO> dataList = new java.util.ArrayList<>();
+
         try {
-            Result<String> result = this.performSnmpGetBulk(AuthenticationRepository.address, AuthenticationRepository.port, getBulkDTO.getOids(), getBulkDTO.getNonRepeaters(), getBulkDTO.getMaxRepetitions(), AuthenticationRepository.readCommunity);
-            long executionTime = System.currentTimeMillis() - startTime;
+            // 创建目标地址
+            Address targetAddress = new UdpAddress(AuthenticationRepository.address + "/" + AuthenticationRepository.port);
 
-            if (result.getCode() == 0) {
-                String[] lines = result.getData().split("\n");
-                java.util.List<SnmpResultVO.SnmpDataVO> dataList = new java.util.ArrayList<>();
+            // 配置目标
+            CommunityTarget target = new CommunityTarget();
+            target.setCommunity(new OctetString(AuthenticationRepository.readCommunity));
+            target.setAddress(targetAddress);
+            target.setRetries(2);
+            target.setTimeout(1500);
+            target.setVersion(SnmpConstants.version2c); // GetBulk 需要 SNMPv2c 或更高版本
 
-                for (String line : lines) {
-                    if (line.trim().isEmpty()) continue;
+            // 创建 PDU
+            PDU pdu = new PDU();
+            pdu.setType(PDU.GETBULK);
 
-                    String[] parts = line.split(" = ", 2);
-                    String oid = parts.length > 0 ? parts[0] : "";
-                    String value = parts.length > 1 ? parts[1] : "";
-
-                    SnmpResultVO.SnmpDataVO dataVO = createSnmpDataVO(oid, value);
-
-                    dataList.add(dataVO);
-                }
-
-                SnmpResultVO resultVO = SnmpResultVO.builder()
-                        .operation("GETBULK")
-                        .address(AuthenticationRepository.address)
-                        .port(AuthenticationRepository.port)
-                        .data(dataList)
-                        .success(true)
-                        .executionTime(executionTime)
-                        .build();
-
-                return Result.success(resultVO);
-            } else {
-                return Result.error(result.getMessage());
+            // 设置 non-repeaters 和 max-repetitions
+            try {
+                pdu.setNonRepeaters(Integer.parseInt(getBulkDTO.getNonRepeaters()));
+                pdu.setMaxRepetitions(Integer.parseInt(getBulkDTO.getMaxRepetitions()));
+            } catch (NumberFormatException e) {
+                log.error("Invalid nonRepeaters or maxRepetitions parameter: nonRepeaters={}, maxRepetitions={}", 
+                         getBulkDTO.getNonRepeaters(), getBulkDTO.getMaxRepetitions());
+                return Result.error("参数 nonRepeaters 或 maxRepetitions 格式错误");
             }
+
+            // 添加变量绑定
+            String[] oids = getBulkDTO.getOids();
+            if (oids != null && oids.length > 0) {
+                for (String oid : oids) {
+                    pdu.add(new VariableBinding(new OID(oid)));
+                }
+            } else {
+                return Result.error("变量绑定列表不能为空");
+            }
+
+            // 发送请求
+            ResponseEvent responseEvent = snmp.send(pdu, target);
+
+            if (responseEvent != null && responseEvent.getResponse() != null) {
+                PDU response = responseEvent.getResponse();
+
+                if (response.getErrorIndex() == 0) {
+                    // 直接从 PDU 响应中解析每个 VariableBinding
+                    for (int i = 0; i < response.size(); i++) {
+                        VariableBinding vb = response.get(i);
+                        String oid = vb.getOid().toDottedString();
+                        String value = vb.getVariable().toString();
+
+                        SnmpResultVO.SnmpDataVO dataVO = createSnmpDataVO(oid, value);
+                        dataList.add(dataVO);
+                    }
+
+                    long executionTime = System.currentTimeMillis() - startTime;
+                    SnmpResultVO resultVO = SnmpResultVO.builder()
+                            .operation("GETBULK")
+                            .address(AuthenticationRepository.address)
+                            .port(AuthenticationRepository.port)
+                            .data(dataList)
+                            .success(true)
+                            .executionTime(executionTime)
+                            .build();
+
+                    return Result.success(resultVO);
+                } else {
+                    return Result.error(response.getErrorStatusText());
+                }
+            } else {
+                log.error("连接超时");
+                return Result.error("连接超时");
+            }
+        } catch (IOException e) {
+            long executionTime = System.currentTimeMillis() - startTime;
+            log.error("SNMP GetBulk 操作异常: {}", e.getMessage(), e);
+            return Result.error("SNMP GetBulk 操作失败: " + e.getMessage());
         } catch (Exception e) {
             long executionTime = System.currentTimeMillis() - startTime;
+            log.error("SNMP GetBulk 操作异常: {}", e.getMessage(), e);
             return Result.error("SNMP GetBulk 操作失败: " + e.getMessage());
         }
     }
