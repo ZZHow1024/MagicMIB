@@ -2,7 +2,12 @@
 import { computed, ref } from 'vue'
 import { getAuthenticationService, setAuthenticationService } from '@/api/authentication.js'
 import { Message } from '@arco-design/web-vue'
-import { snmpGetNextService, snmpGetService, snmpWalkService, snmpGetSubtreeService } from '@/api/snmp.js'
+import {
+  snmpGetNextService,
+  snmpGetService,
+  snmpWalkService,
+  snmpGetSubtreeService,
+} from '@/api/snmp.js'
 import { getMibService, loadMibService } from '@/api/mib.js'
 import { useAuthenticationStore } from '@/stores'
 import GetBulkModal from '@/components/GetBulkModal.vue'
@@ -25,7 +30,7 @@ const advancedForm = ref({
   port: '161',
   readCommunity: 'public',
   writeCommunity: 'public',
-  snmpVersion: 1,
+  snmpVersion: 2,
 })
 
 const mibTreeOptions = [
@@ -207,7 +212,7 @@ const handleSetConfirm = (setData) => {
 
   // 使用后端返回的结果数据
   const responseData = setData.result
-  
+
   if (responseData.data && responseData.data.length > 0) {
     responseData.data.forEach((item, index) => {
       const newResult = {
@@ -313,7 +318,7 @@ const snmpGetNext = async () => {
             endpoint: `${responseData.address}:${responseData.port}`,
           }
           resultRows.value.push(newResult)
-          
+
           // 更新输入框的OID为最后一个返回的OID
           if (index === responseData.data.length - 1) {
             oidInput.value = item.oid
