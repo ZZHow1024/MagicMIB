@@ -13,7 +13,7 @@ import java.util.*;
  *
  * @author ZZHow
  * create 2025/11/30
- * update 2025/12/3
+ * update 2025/12/7
  */
 @Slf4j
 @Component
@@ -35,6 +35,21 @@ public class MibParseUtil {
             "IANAifType-MIB", "IANA-ADDRESS-FAMILY-NUMBERS-MIB",
             "IANA-PRINTER-MIB", "IANA-MAU-MIB"
     };
+
+    /**
+     * OID 冲突解决策略
+     * PREFER_FIRST: 保留第一次加载的节点，忽略后续的
+     * PREFER_LAST: 保留最后一次加载的节点，覆盖之前的
+     * MERGE: 合并信息，创建复合节点
+     */
+    private enum ConflictResolution {
+        PREFER_FIRST,
+        PREFER_LAST,
+        MERGE
+    }
+
+    // 默认使用保留第一个的策略（RFC1213-MIB 通常更基础）
+    private static final ConflictResolution CONFLICT_STRATEGY = ConflictResolution.PREFER_FIRST;
 
     /**
      * 解析 MIB 文件名数组并构建 MIB 节点树
@@ -200,6 +215,7 @@ public class MibParseUtil {
 
     /**
      * 将 MIB 模块的节点添加到树结构中
+     * 处理 OID 冲突问题
      *
      * @param mib     已解析的 MIB 对象
      * @param nodeMap 节点映射表
@@ -213,11 +229,21 @@ public class MibParseUtil {
                 MibValueSymbol valueSymbol = (MibValueSymbol) symbol;
                 MibNode node = createNodeFromValueSymbol(valueSymbol, mib);
                 if (node != null) {
+                    // 处理 OID 冲突
+                    String oid = node.getOid();
+                    MibNode existingNode = nodeMap.get(oid);
+
+                    if (existingNode != null) {
+                        // 发现冲突，根据策略处理
+                        handleOidConflict(existingNode, node, oid);
+                        continue; // 跳过当前节点，保留现有节点
+                    }
+
                     // 将节点添加到映射表
-                    nodeMap.put(node.getOid(), node);
+                    nodeMap.put(oid, node);
 
                     // 建立父子关系
-                    String parentOid = findParentOid(node.getOid());
+                    String parentOid = findParentOid(oid);
                     if (parentOid != null && nodeMap.containsKey(parentOid)) {
                         MibNode parent = nodeMap.get(parentOid);
                         if (parent != null && !parent.getChildren().contains(node)) {
@@ -226,6 +252,60 @@ public class MibParseUtil {
                     }
                 }
             }
+        }
+    }
+
+    /**
+     * 处理 OID 冲突
+     */
+    private void handleOidConflict(MibNode existingNode, MibNode newNode, String oid) {
+        switch (CONFLICT_STRATEGY) {
+            // 保留现有节点，忽略新节点
+            case PREFER_FIRST:
+                break;
+
+            // 覆盖现有节点，使用新节点
+            case PREFER_LAST:
+                // 更新现有节点的信息
+                mergeNodeInfo(existingNode, newNode);
+                break;
+
+            // 合并节点信息
+            case MERGE:
+                mergeNodeInfo(existingNode, newNode);
+                break;
+        }
+    }
+
+    /**
+     * 合并节点信息
+     */
+    private void mergeNodeInfo(MibNode target, MibNode source) {
+        // 合并描述信息
+        if (source.getDescription() != null && !source.getDescription().isEmpty()) {
+            if (target.getDescription() == null || target.getDescription().isEmpty()) {
+                target.setDescription(source.getDescription());
+            } else if (!target.getDescription().contains(source.getMib())) {
+                target.setDescription(target.getDescription() +
+                        "\n[" + source.getMib() + "]: " + source.getDescription());
+            }
+        }
+
+        // 更新MIB信息
+        if (!target.getMib().contains(source.getMib())) {
+            target.setMib(target.getMib() + ", " + source.getMib());
+        }
+
+        // 优先使用有访问权限的节点
+        if (source.getAccess() != null && !"not-accessible".equals(source.getAccess()) &&
+                (target.getAccess() == null || "not-accessible".equals(target.getAccess()))) {
+            target.setAccess(source.getAccess());
+        }
+
+        // 优先使用有语法的节点
+        if (source.getSyntax() != null && !source.getSyntax().isEmpty() &&
+                (target.getSyntax() == null || target.getSyntax().isEmpty())) {
+            target.setSyntax(source.getSyntax());
         }
     }
 
@@ -268,23 +348,15 @@ public class MibParseUtil {
                 String accessValue = getMacroClause(symbol, "ACCESS");
                 if (accessValue != null && !accessValue.trim().isEmpty()) {
                     access = accessValue.toLowerCase().replace("_", "-");
-                    log.trace("解析得到 access: {} for symbol: {}", access, name);
                 }
 
                 // 获取 STATUS 子句
                 String statusValue = getMacroClause(symbol, "STATUS");
                 if (statusValue != null && !statusValue.trim().isEmpty()) {
                     status = statusValue.toLowerCase().replace("_", "-");
-                    log.trace("解析得到 status: {} for symbol: {}", status, name);
-                }
-
-                // 如果从符号文本中没有获取到，尝试从符号的其他属性中获取
-                if (access.equals("not-accessible") && status.equals("current")) {
-                    log.debug("符号 {} 使用默认 access 和 status: access={}, status={}", name, access, status);
                 }
             } catch (Exception e) {
-                log.debug("获取 access/status 信息失败: {}", e.getMessage());
-                // 使用默认值
+                log.info("获取 access/status 信息失败: {}", e.getMessage());
             }
 
             // 创建节点（使用 OID 作为唯一标识）
@@ -342,7 +414,7 @@ public class MibParseUtil {
 
             return null;
         } catch (Exception e) {
-            log.debug("获取宏子句 {} 失败: {}", clause, e.getMessage());
+            log.info("获取宏子句 {} 失败: {}", clause, e.getMessage());
             return null;
         }
     }
@@ -521,18 +593,18 @@ public class MibParseUtil {
         if (oid == null || oid.trim().isEmpty()) {
             return null;
         }
-        
+
         // 如果缓存为空，先加载标准 MIB
         if (oidNodeCache.isEmpty()) {
             loadStandardMibs();
         }
-        
+
         // 直接查找
         MibNode node = oidNodeCache.get(oid);
         if (node != null) {
             return node;
         }
-        
+
         // 如果没找到，尝试查找最接近的父节点
         return findClosestParentNode(oid);
     }
@@ -545,16 +617,16 @@ public class MibParseUtil {
             log.info("开始加载标准 MIB 文件到缓存");
             // 只加载一些关键的标准 MIB 文件，避免加载过多文件导致性能问题
             String[] coreMibs = {
-                "SNMPv2-MIB",    // 基础 SNMPv2 MIB
-                "RFC1213-MIB",    // 基础 MIB-II
-                "IF-MIB",         // 接口 MIB
-                "IP-MIB",         // IP MIB
-                "TCP-MIB",        // TCP MIB
-                "UDP-MIB"         // UDP MIB
+                    "SNMPv2-MIB",    // 基础 SNMPv2 MIB
+                    "RFC1213-MIB",    // 基础 MIB-II
+                    "IF-MIB",         // 接口 MIB
+                    "IP-MIB",         // IP MIB
+                    "TCP-MIB",        // TCP MIB
+                    "UDP-MIB"         // UDP MIB
             };
-            
+
             List<MibNode> nodes = parseMibFiles(coreMibs);
-            
+
             if (!nodes.isEmpty()) {
                 buildOidCache(nodes.get(0));
                 log.info("标准 MIB 文件缓存加载完成，缓存节点数: {}", oidNodeCache.size());
@@ -569,12 +641,12 @@ public class MibParseUtil {
      */
     private void buildOidCache(MibNode node) {
         if (node == null) return;
-        
+
         // 将当前节点添加到缓存
         if (node.getOid() != null && !node.getOid().isEmpty()) {
             oidNodeCache.put(node.getOid(), node);
         }
-        
+
         // 递归处理子节点
         if (node.getChildren() != null) {
             for (MibNode child : node.getChildren()) {
@@ -588,7 +660,7 @@ public class MibParseUtil {
      */
     private MibNode findClosestParentNode(String oid) {
         String[] parts = oid.split("\\.");
-        
+
         // 从最长的可能 OID 开始查找
         for (int i = parts.length; i >= 1; i--) {
             StringBuilder parentOid = new StringBuilder();
@@ -598,13 +670,13 @@ public class MibParseUtil {
                 }
                 parentOid.append(parts[j]);
             }
-            
+
             MibNode node = oidNodeCache.get(parentOid.toString());
             if (node != null) {
                 return node;
             }
         }
-        
+
         return null;
     }
 
