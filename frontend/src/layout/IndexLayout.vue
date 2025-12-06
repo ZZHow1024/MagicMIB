@@ -11,14 +11,18 @@ const menuItems = [
 ]
 
 const activeKey = ref(menuItems[0].key)
-const selectedKeys = computed(() => [activeKey.value])
+const selectedKeys = computed(() => activeKey.value ? [activeKey.value] : [])
 const currentYear = new Date().getFullYear()
 
 watch(
   () => route.path,
   (currentPath) => {
-    const matched = menuItems.find((item) => item.path === currentPath)
-    activeKey.value = matched ? matched.key : menuItems[0].key
+    if (currentPath === '/about') {
+      activeKey.value = null
+    } else {
+      const matched = menuItems.find((item) => item.path === currentPath)
+      activeKey.value = matched ? matched.key : menuItems[0].key
+    }
   },
   { immediate: true },
 )
@@ -29,6 +33,10 @@ const handleMenuSelect = (key) => {
     router.push(target.path)
   }
   activeKey.value = key
+}
+
+const handleAboutClick = () => {
+  router.push('/about')
 }
 </script>
 
@@ -47,7 +55,7 @@ const handleMenuSelect = (key) => {
       </a-menu>
 
       <a-space>
-        <a-button type="text">关于</a-button>
+        <a-button type="text" @click="handleAboutClick">关于</a-button>
       </a-space>
     </a-layout-header>
 
