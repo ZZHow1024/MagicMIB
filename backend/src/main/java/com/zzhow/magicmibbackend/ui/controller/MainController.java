@@ -48,7 +48,7 @@ public class MainController {
             return;
         }
 
-        byte i = webService.startService(portTextField.getText());
+        byte i = webService.startService(portTextField.getText(), allowCheckBox.isSelected());
         switch (i) {
             case 0 -> {
                 portTextField.setDisable(true);

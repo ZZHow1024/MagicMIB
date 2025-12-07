@@ -12,9 +12,10 @@ public interface WebService {
      * 启动 Web 服务
      *
      * @param port 端口号
+     * @param allowLAN 是否允许局域网访问
      * @return 0-启动成功；1-端口号错误；2-端口被占用
      */
-    byte startService(String port);
+    byte startService(String port, boolean allowLAN);
 
     /**
      * 停止 Web 服务

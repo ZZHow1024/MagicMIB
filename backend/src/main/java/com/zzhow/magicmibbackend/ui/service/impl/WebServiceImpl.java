@@ -1,5 +1,6 @@
 package com.zzhow.magicmibbackend.ui.service.impl;
 
+import com.zzhow.magicmibbackend.interceptor.IpAccessInterceptor;
 import com.zzhow.magicmibbackend.ui.service.WebService;
 import com.zzhow.magicmibbackend.util.Application;
 import com.zzhow.magicmibbackend.util.InternetUtil;
@@ -19,21 +20,26 @@ public class WebServiceImpl implements WebService {
     /**
      * 启动 Web 服务
      *
-     * @param portStr 端口号
+     * @param portStr  端口号
+     * @param allowLAN 是否允许局域网访问
      * @return 0-启动成功；1-端口号错误；2-端口被占用
      */
     @Override
-    public byte startService(String portStr) {
+    public byte startService(String portStr, boolean allowLAN) {
         try {
             int port = Integer.parseInt(portStr);
             if (port < 1 || port > 65535)
                 return 1;
+
+            // 检查端口占用情况
             if (InternetUtil.isPortInUse(port))
                 return 2;
-            else {
-                applicationContext = Application.startService("--server.port=" + port);
-                return 0;
-            }
+
+            // 设置IP访问控制
+            IpAccessInterceptor.setAllowLanAccess(allowLAN);
+            applicationContext = Application.startService("--server.port=" + port);
+
+            return 0;
         } catch (NumberFormatException e) {
             return 1;
         }
