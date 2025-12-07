@@ -1,0 +1,26 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import javafx.scene.control.Button?>
+<?import javafx.scene.control.CheckBox?>
+<?import javafx.scene.control.Label?>
+<?import javafx.scene.control.TextField?>
+<?import javafx.scene.layout.AnchorPane?>
+<?import javafx.scene.text.Font?>
+
+<AnchorPane prefHeight="200.0" prefWidth="500.0" xmlns="http://javafx.com/javafx/21" xmlns:fx="http://javafx.com/fxml/1" fx:controller="com.zzhow.magicmibbackend.ui.controller.MainController">
+    <children>
+          <Label layoutX="197.0" layoutY="14.0" text="MagicMIB">
+              <font>
+                  <Font size="25.0" />
+              </font>
+          </Label>
+      <Label fx:id="urlLabel" alignment="CENTER" contentDisplay="CENTER" layoutX="161.0" layoutY="54.0" text="Web页面：http://localhost:8080" textAlignment="CENTER" />
+          <Label layoutX="231.0" layoutY="165.0" text="ZZHow" />
+          <Label alignment="CENTER_RIGHT" contentDisplay="RIGHT" layoutY="85.0" prefHeight="16.0" prefWidth="190.0" text="端口号：" />
+          <TextField fx:id="portTextField" layoutX="194.0" layoutY="80.0" prefHeight="24.0" prefWidth="112.0" promptText="1～65535" text="80" />
+      <CheckBox fx:id="allowCheckBox" alignment="CENTER" contentDisplay="CENTER" layoutX="188.0" layoutY="123.0" mnemonicParsing="false" text="允许局域网的连接" textAlignment="CENTER" />
+          <Button fx:id="startServiceButton" layoutX="313.0" layoutY="81.0" mnemonicParsing="false" text="启动服务" />
+          <Button fx:id="aboutButton" layoutX="12.0" layoutY="160.0" mnemonicParsing="false" text="关于" />
+      <Button fx:id="exitButton" layoutX="445.0" layoutY="160.0" mnemonicParsing="false" onAction="#onExitClicked" text="退出" />
+    </children>
+</AnchorPane>
