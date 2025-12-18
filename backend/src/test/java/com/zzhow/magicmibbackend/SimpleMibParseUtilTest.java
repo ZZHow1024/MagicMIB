@@ -1,6 +1,7 @@
 package com.zzhow.magicmibbackend;
 
 import com.zzhow.magicmibbackend.pojo.entity.MibNode;
+import com.zzhow.magicmibbackend.util.Application;
 import com.zzhow.magicmibbackend.util.MibParseUtil;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -18,7 +19,7 @@ import java.util.Map;
  * create 2025/11/30
  * update 2025/12/3
  */
-@SpringBootTest
+@SpringBootTest(classes = Application.class)
 public class SimpleMibParseUtilTest {
     @Autowired
     private MibParseUtil mibParseUtil;
@@ -368,6 +369,64 @@ public class SimpleMibParseUtilTest {
             for (MibNode child : node.getChildren()) {
                 printSpecificNodesExample(child, depth + 1, maxDepth);
             }
+        }
+    }
+
+    @Test
+    @DisplayName("测试 OID 查找功能 - 验证 sysObjectID.0 的解析")
+    public void testFindNodeByOid() {
+        try {
+            System.out.println("=== 测试 OID 查找功能 (基于 RFC1213-MIB) ===");
+
+            // 测试几个关键的 OID (RFC1213-MIB 中的 System 组)
+            String[] testOids = {
+                    "1.3.6.1.2.1.1.2.0",    // sysObjectID.0 - 应该返回 sysObjectID
+                    "1.3.6.1.2.1.1.1.0",    // sysDescr.0 - 应该返回 sysDescr
+                    "1.3.6.1.2.1.1.3.0",    // sysUpTime.0 - 应该返回 sysUpTime
+                    "1.3.6.1.2.1.1.2",      // sysObjectID - 应该返回 sysObjectID
+                    "1.3.6.1.2.1.1.1",      // sysDescr - 应该返回 sysDescr
+                    "1.3.6.1.2.1.1",        // system - 应该返回 system
+                    "1.3.6.1.2.1",          // mib-2 - 应该返回 mib-2
+                    "1.3.6.1.2",            // mgmt - 应该返回 mgmt
+                    "1.3.6.1",              // internet - 应该返回 internet
+                    "1.3.6",                // dod - 应该返回 dod
+                    "1.3",                  // org - 应该返回 org
+                    "1",                    // iso - 应该返回 iso
+                    "999.999.999.999"       // 不存在的 OID - 应该返回 null
+            };
+
+            for (String oid : testOids) {
+                MibNode node = mibParseUtil.findNodeByOid(oid);
+                if (node != null) {
+                    System.out.printf("OID: %-25s -> 名称: %-15s MIB: %s%n",
+                            oid, node.getLabel(), node.getMib());
+                } else {
+                    System.out.printf("OID: %-25s -> 未找到节点%n", oid);
+                }
+            }
+
+            // 特别验证关键问题：1.3.6.1.2.1.1.2.0 应该对应 sysObjectID
+            MibNode sysObjectIDNode = mibParseUtil.findNodeByOid("1.3.6.1.2.1.1.2.0");
+            if (sysObjectIDNode != null) {
+                System.out.println("\n=== 关键验证结果 ===");
+                System.out.println("OID 1.3.6.1.2.1.1.2.0 的解析结果:");
+                System.out.println("  名称: " + sysObjectIDNode.getLabel());
+                System.out.println("  MIB: " + sysObjectIDNode.getMib());
+                System.out.println("  OID: " + sysObjectIDNode.getOid());
+
+                // 验证结果
+                if ("sysObjectID".equals(sysObjectIDNode.getLabel())) {
+                    System.out.println("测试通过：正确解析为 sysObjectID");
+                } else {
+                    System.out.println("测试失败：期望 sysObjectID，实际得到 " + sysObjectIDNode.getLabel());
+                }
+            } else {
+                System.out.println("测试失败：1.3.6.1.2.1.1.2.0 未找到节点");
+            }
+
+        } catch (Exception e) {
+            System.err.println("测试 OID 查找时发生异常: " + e.getMessage());
+            e.printStackTrace();
         }
     }
 }

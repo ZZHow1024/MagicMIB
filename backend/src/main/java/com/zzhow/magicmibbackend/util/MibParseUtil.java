@@ -599,14 +599,36 @@ public class MibParseUtil {
             loadStandardMibs();
         }
 
-        // 直接查找
+        // 1. 首先尝试精确查找
         MibNode node = oidNodeCache.get(oid);
         if (node != null) {
             return node;
         }
 
-        // 如果没找到，尝试查找最接近的父节点
-        return findClosestParentNode(oid);
+        // 2. 如果 OID 以 .0 结尾，尝试去掉 .0 后缀查找（处理实例节点）
+        if (oid.endsWith(".0")) {
+            String baseOid = oid.substring(0, oid.length() - 2);
+            node = oidNodeCache.get(baseOid);
+            if (node != null) {
+                return node;
+            }
+        }
+
+        // 3. 如果还是没找到，尝试查找最接近的父节点（但要确保不是返回根节点）
+        MibNode closestParent = findClosestParentNode(oid);
+        if (closestParent != null) {
+            // 只有当父节点不是太高层级的节点时才返回
+            // 避免返回 iso(1)、org(3)、dod(6)、internet(1) 等基础节点
+            String parentOid = closestParent.getOid();
+            if (!"1".equals(parentOid) &&
+                !"1.3".equals(parentOid) &&
+                !"1.3.6".equals(parentOid) &&
+                !"1.3.6.1".equals(parentOid)) {
+                return closestParent;
+            }
+        }
+
+        return null;
     }
 
     /**
@@ -617,8 +639,7 @@ public class MibParseUtil {
             log.info("开始加载标准 MIB 文件到缓存");
             // 只加载一些关键的标准 MIB 文件，避免加载过多文件导致性能问题
             String[] coreMibs = {
-                    "SNMPv2-MIB",    // 基础 SNMPv2 MIB
-                    "RFC1213-MIB",    // 基础 MIB-II
+                    "RFC1213-MIB",    // 基础 MIB-II (包含 System 组)
                     "IF-MIB",         // 接口 MIB
                     "IP-MIB",         // IP MIB
                     "TCP-MIB",        // TCP MIB

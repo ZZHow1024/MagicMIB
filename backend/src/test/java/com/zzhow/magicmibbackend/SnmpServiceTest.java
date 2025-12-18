@@ -3,6 +3,7 @@ package com.zzhow.magicmibbackend;
 import com.zzhow.magicmibbackend.config.SnmpConfiguration;
 import com.zzhow.magicmibbackend.result.Result;
 import com.zzhow.magicmibbackend.service.impl.SnmpServiceImpl;
+import com.zzhow.magicmibbackend.util.Application;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -18,7 +19,7 @@ import static org.junit.jupiter.api.Assertions.*;
  * create 2025/11/27
  * update 2025/12/3
  */
-@SpringBootTest
+@SpringBootTest(classes = Application.class)
 @Import(SnmpConfiguration.class)
 class SnmpServiceTest {
 
