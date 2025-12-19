@@ -27,7 +27,7 @@ public class MibServiceImpl implements MibService {
 
     @PostConstruct
     public void init() {
-        MibRepository.mibFiles = new String[]{"IF-MIB", "RFC1213-MIB"};
+        MibRepository.mibFiles = new String[]{"RFC1213-MIB"};
         MibRepository.mibTree = mibParseUtil.parseMibFiles(MibRepository.mibFiles);
     }
 

@@ -153,6 +153,11 @@ public class MibParseUtil {
         internet.getChildren().add(mgmt);
         nodeMap.put(mgmt.getOid(), mgmt);
 
+        // mib-2(1) 在 mgmt(2) 下，OID为 1.3.6.1.2.1
+        MibNode mib2 = createBasicNode("mib-2", "1.3.6.1.2.1", "MIB-II - Management Information Base for network management.", "root", "SEQUENCE", "not-accessible", "mandatory");
+        mgmt.getChildren().add(mib2);
+        nodeMap.put(mib2.getOid(), mib2);
+
         // experimental(3) 在 internet(1) 下，OID为 1.3.6.1.3
         MibNode experimental = createBasicNode("experimental", "1.3.6.1.3", "Experimental", "root", "SEQUENCE", "not-accessible", "mandatory");
         internet.getChildren().add(experimental);
