@@ -11,7 +11,7 @@ const menuItems = [
 ]
 
 const activeKey = ref(menuItems[0].key)
-const selectedKeys = computed(() => activeKey.value ? [activeKey.value] : [])
+const selectedKeys = computed(() => (activeKey.value ? [activeKey.value] : []))
 const currentYear = new Date().getFullYear()
 
 watch(
@@ -43,7 +43,7 @@ const handleAboutClick = () => {
 <template>
   <a-layout id="index-layout" class="layout-shell">
     <a-layout-header class="layout-header">
-      <div class="brand">
+      <div class="brand" @click="router.push('/mib')">
         <div class="brand__logo">MagicMIB</div>
         <div class="brand__desc">Designed by ZZHow</div>
       </div>
@@ -100,6 +100,7 @@ $text-muted: #6b758b;
   display: flex;
   flex-direction: column;
   gap: 2px;
+  cursor: pointer;
 }
 
 .brand__logo {
