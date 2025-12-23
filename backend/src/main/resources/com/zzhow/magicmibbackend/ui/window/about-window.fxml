@@ -1,0 +1,88 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import javafx.geometry.Insets?>
+<?import javafx.scene.control.Label?>
+<?import javafx.scene.image.Image?>
+<?import javafx.scene.image.ImageView?>
+<?import javafx.scene.layout.AnchorPane?>
+<?import javafx.scene.layout.HBox?>
+<?import javafx.scene.layout.VBox?>
+<?import javafx.scene.text.Font?>
+
+<VBox alignment="CENTER" prefHeight="248.0" prefWidth="550.0" spacing="15.0" xmlns="http://javafx.com/javafx/21" xmlns:fx="http://javafx.com/fxml/1">
+    <padding>
+        <Insets bottom="20.0" left="20.0" right="20.0" top="20.0" />
+    </padding>
+
+    <!-- 应用图标 -->
+    <VBox alignment="CENTER" spacing="5.0">
+        <ImageView fitHeight="64.0" fitWidth="64.0" preserveRatio="true">
+            <image>
+                <Image url="@/image/MagicMIB.png" />
+            </image>
+        </ImageView>
+        <Label text="MagicMIB">
+            <font>
+                <Font name="System Bold" size="22.0" />
+            </font>
+        </Label>
+    </VBox>
+
+    <!-- 应用信息容器 -->
+    <AnchorPane style="-fx-background-color: white; -fx-background-radius: 8px; -fx-border-radius: 8px; -fx-border-color: #e5e7ef; -fx-border-width: 1px;">
+        <padding>
+            <Insets bottom="20.0" left="20.0" right="20.0" top="20.0" />
+        </padding>
+
+        <!-- 版本信息 -->
+        <VBox layoutX="100.0" layoutY="22.0" spacing="12.0">
+            <children>
+                <HBox alignment="CENTER_LEFT" spacing="10.0">
+                    <Label style="-fx-font-weight: 500; -fx-text-fill: #6b758b;" text="版本：" />
+                    <Label style="-fx-text-fill: #1d2129;" text="1.0.0" />
+                </HBox>
+
+                <HBox alignment="CENTER_LEFT" spacing="10.0">
+                    <Label style="-fx-font-weight: 500; -fx-text-fill: #6b758b;" text="开源协议：" />
+                    <Label style="-fx-text-fill: #1d2129;" text="GPL-3.0" />
+                </HBox>
+
+                <HBox alignment="CENTER_LEFT" spacing="10.0">
+                    <Label style="-fx-font-weight: 500; -fx-text-fill: #6b758b;" text="GitHub：" />
+                    <Label fx:id="githubLabel" style="-fx-text-fill: #165dff; -fx-underline: true;" text="https://github.com/ZZHow1024/MagicMIB">
+                        <font>
+                            <Font size="12.0" />
+                        </font>
+                    </Label>
+                </HBox>
+
+                <!-- 更新日志标题 -->
+                <Label style="-fx-font-weight: 600; -fx-text-fill: #1d2129; -fx-font-size: 16px;" text="更新日志" />
+
+                <!-- 更新日志内容 -->
+                <VBox spacing="8.0" style="-fx-background-color: #ffffff; -fx-background-radius: 4px; -fx-padding: 10px;">
+                    <children>
+                        <HBox alignment="CENTER_LEFT" spacing="8.0">
+                            <Label style="-fx-font-weight: 600; -fx-text-fill: #1d2129; -fx-font-size: 14px;" text="1.0.0" />
+                            <Label style="-fx-text-fill: #6b758b; -fx-font-size: 12px;" text="2025-12-25" />
+                        </HBox>
+                        <VBox spacing="4.0" style="-fx-padding: 0 0 0 8px;">
+                            <children>
+                                <Label style="-fx-text-fill: #4e5969; -fx-font-size: 13px;" text="• 初始版本发布" />
+                                <Label style="-fx-text-fill: #4e5969; -fx-font-size: 13px;" text="• 实现了基本的 MIB 浏览器功能" />
+                                <Label style="-fx-text-fill: #4e5969; -fx-font-size: 13px;" text="• 实现了基本的 SNMP 终端功能" />
+                            </children>
+                        </VBox>
+                    </children>
+                </VBox>
+            </children>
+        </VBox>
+   
+       <!-- 网站链接 -->
+       <Label fx:id="websiteLabel" layoutX="218.0" layoutY="256.0" style="-fx-text-fill: #6b758b; -fx-font-size: 14px;" text="ZZHow.com">
+           <font>
+               <Font size="14.0" />
+           </font>
+       </Label>
+    </AnchorPane>
+</VBox>

@@ -2,6 +2,7 @@ package com.zzhow.magicmibbackend.ui.controller;
 
 import com.zzhow.magicmibbackend.ui.service.WebService;
 import com.zzhow.magicmibbackend.ui.service.impl.WebServiceImpl;
+import com.zzhow.magicmibbackend.ui.window.AboutWindow;
 import com.zzhow.magicmibbackend.util.MessageBoxUtil;
 import javafx.fxml.FXML;
 import javafx.scene.control.Button;
@@ -14,7 +15,7 @@ import javafx.scene.control.TextField;
  *
  * @author ZZHow
  * create 2025/12/7
- * update 2025/12/7
+ * update 2025/12/23
  */
 public class MainController {
     // 服务是否已启动
@@ -61,6 +62,11 @@ public class MainController {
             case 1 -> MessageBoxUtil.error("端口号错误", "端口号应为 1～65535 的整数");
             case 2 -> MessageBoxUtil.error("端口号被占用", "请尝试更换端口号");
         }
+    }
+
+    @FXML
+    private void onButtonAboutClicked() {
+        AboutWindow.open();
     }
 
     @FXML
