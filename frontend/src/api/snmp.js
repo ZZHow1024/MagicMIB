@@ -1,0 +1,49 @@
+import request from '@/utils/request.js'
+
+// 发起 SNMP Get 请求接口
+export const snmpGetService = (oid) => {
+  return request.get('/api/snmp/get', {
+    params: { oid },
+  })
+}
+
+// 发起 SNMP GetNext 请求接口
+export const snmpGetNextService = (oid) => {
+  return request.get('/api/snmp/get-next', {
+    params: { oid },
+  })
+}
+
+// 发起 SNMP GetBulk 请求接口
+export const snmpGetBulkService = (nonRepeaters, maxRepetitions, oids) => {
+  return request.get('/api/snmp/get-bulk', {
+    params: {
+      nonRepeaters,
+      maxRepetitions,
+      oids,
+    },
+  })
+}
+
+// 发起 SNMP Walk 请求接口
+export const snmpWalkService = (oid) => {
+  return request.get('/api/snmp/walk', {
+    params: { oid },
+  })
+}
+
+// 发起 SNMP GetSubtree 请求接口
+export const snmpGetSubtreeService = (oid) => {
+  return request.get('/api/snmp/get-subtree', {
+    params: { oid },
+  })
+}
+
+// 发起 SNMP Set 请求接口
+export const snmpSetService = (oid, value, type) => {
+  return request.post('/api/snmp/set', {
+    oid,
+    value,
+    type,
+  })
+}
